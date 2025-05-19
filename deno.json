@@ -1,6 +1,6 @@
 {
   "tasks": {
       "dev": "deno run -A jsr:@babashka/nbb main.cljs",
-      "nrepl": "deno run -A jsr:@babashka/nbb nrepl-server :port 1234"
+      "nrepl": "deno run -A --unstable-node-globals jsr:@babashka/nbb nrepl-server :port 1234"
   }
 }
