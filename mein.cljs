@@ -7,7 +7,7 @@
             [promesa.core :as p]))
 
 (defn sleep [ms]
-  (js/Promise.
+  (js/Promise
    (fn [resolve _]
      (js/setTimeout resolve ms))))
 
@@ -22,29 +22,55 @@
    [:div {:data-text "$input.toUpperCase()"}]
    [:button {:data-show "$input != ''"} "Save"]
    [:div {:id "question"}]
-   [:button {:data-on-click "@get('/actions/quiz')"} "Fetch a question"]])
+   [:button {:data-on-click "@get('/actions/quiz2')"} "Fetch a question"]])
 
 (add-watch my-question :w (fn [a b c d] (prn "this: " d)))
 
+(defonce counter (atom 0))
+
 (defonce the-server nil)
+
+(defonce a-stream (atom nil))
 
 (defn create-readable-stream []
   (let [timer (atom nil)
         start (fn [^ReadableStreamReader controller]
                 (reset! timer
                         (js/setInterval
-                         #(.enqueue controller "Hello, World!\n")
+                         (fn []
+                           (.enqueue controller (str "Hello, World! " @counter "\n"))
+                           (swap! counter inc))
 
                          1000)))]
     #js{:start start
         :cancel (fn []
                   (js/clearInterval @timer))}))
 
+(defn create-readable-event-stream []
+  (let [timer (atom nil)
+        start (fn [^ReadableStreamReader controller]
+                (reset! timer
+                        (js/setInterval
+                         (fn []
+                           (.mergeFragments controller (str "<div id=\"question\">" @counter "</div>"))
+                           (swap! counter inc))
 
+                         1000)))]
+    #js{:start start
+        :cancel (fn []
+                  (js/clearInterval @timer))}))
 ;(defn handler [req]
 ;  (let [body (js/ReadableStream. #js{:start (fn [controller] (start-stream controller))
 ;                                       :cancel (fn [] (js/clearInterval @timer)))})]
 ;    (js/Response. (body.pipeThrough (js/TextEncoderStream.)) #js {"content-type" "text/plain; charset=utf-8"})))
+
+(defn streamhandler [stream]
+  (reset! a-stream stream)
+  (js/console.log (str "setting stream " @counter))
+  (swap! counter inc)
+  (.mergeFragments stream (str "<div id=\"question\">hi " @counter "</div>"))
+                                                                 ;;(await (sleep 5000))                                                                        ;;(.mergeFragments stream "<div id=\"question\">you</div>")
+  )
 
 (defn routefn [req]
   (let [url (new js/URL req.url)
@@ -54,10 +80,12 @@
       "/test" (new js/Response (str "<html><body>" url " " path  "</body></html") #js{:headers #js{:content-type "text/html"}})
       "/" (new js/Response "Hi")
       "/hic" (new js/Response (render-to-string [:html headpart page1]) #js{:headers #js{:content-type "text/html"}})
-      "/actions/quiz" (.stream d/ServerSentEventGenerator (fn [stream]
-                                                            (.mergeFragments stream "<div id=\"question\">hi</div>")
-                                                            (await (sleep 5000))
-                                                            (.mergeFragments stream "<div id=\"question\">you</div>")))
+      "/actions/quiz2" (.stream d/ServerSentEventGenerator streamhandler #js{:keepalive true})
+      "/actions/quiz" (let [body (new js/ReadableStream (create-readable-event-stream))]
+                        (new js/Response (.pipeThrough body (new js/TextEncoderStream)) #js{:headers #js{:content-type "text/event-stream"
+                                                                                                         :cache-control "no-cache"
+                                                                                                         :connection "keep-alive"
+                                                                                                         :transfer-encoding "chunked"}}))
       "/stream" (let [body (new js/ReadableStream (create-readable-stream))]
                   (new js/Response (.pipeThrough body (new js/TextEncoderStream)) #js{:headers #js{:content-type "text/event-stream"
                                                                                                    :cache-control "no-cache"
