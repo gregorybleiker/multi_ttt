@@ -30,7 +30,7 @@
 
 (defonce the-server nil)
 
-(defonce a-stream (atom nil))
+(def a-stream (atom (set '())))
 
 (defn create-readable-stream []
   (let [timer (atom nil)
@@ -64,13 +64,22 @@
 ;                                       :cancel (fn [] (js/clearInterval @timer)))})]
 ;    (js/Response. (body.pipeThrough (js/TextEncoderStream.)) #js {"content-type" "text/plain; charset=utf-8"})))
 
-(defn streamhandler [stream]
-  (reset! a-stream stream)
-  (js/console.log (str "setting stream " @counter))
-  (swap! counter inc)
-  (.mergeFragments stream (str "<div id=\"question\">hi " @counter "</div>"))
-                                                                 ;;(await (sleep 5000))                                                                        ;;(.mergeFragments stream "<div id=\"question\">you</div>")
+
+(defn createhandler [req]
+  ;(.on req "close" (js/console.log "closing"))
+  streamhandler
   )
+
+(defn streamhandler [stream]
+  (swap! a-stream conj stream)
+  (js/console.log (str "adding to stream " @counter))
+  (swap! counter inc)
+  (try
+    (.mergeFragments stream (str "<div id=\"question\">hi there " @counter "</div>"))
+    (catch js/Object e
+       (.log js/console e))))
+                                                                 ;;(await (sleep 5000))                                                                        ;;(.mergeFragments stream "<div id=\"question\">you</div>")
+
 
 (defn routefn [req]
   (let [url (new js/URL req.url)
@@ -80,7 +89,7 @@
       "/test" (new js/Response (str "<html><body>" url " " path  "</body></html") #js{:headers #js{:content-type "text/html"}})
       "/" (new js/Response "Hi")
       "/hic" (new js/Response (render-to-string [:html headpart page1]) #js{:headers #js{:content-type "text/html"}})
-      "/actions/quiz2" (.stream d/ServerSentEventGenerator streamhandler #js{:keepalive true})
+      "/actions/quiz2" (.stream d/ServerSentEventGenerator (createhandler req) #js{:keepalive true})
       "/actions/quiz" (let [body (new js/ReadableStream (create-readable-event-stream))]
                         (new js/Response (.pipeThrough body (new js/TextEncoderStream)) #js{:headers #js{:content-type "text/event-stream"
                                                                                                          :cache-control "no-cache"
