@@ -12,94 +12,46 @@
      (js/setTimeout resolve ms))))
 
 (def headpart
-  [:head [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]])
-
-(def my-question (atom {:question "What is 1+2"}))
+  [:head
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
+   [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"}]])
 
 (def page1
-  [:body [:h1 "Hello Hiccup 6"]
+  [:body [:h1 "Connect to a Stream"]
+   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}}"}]
    [:input {:data-bind "input"}]
-   [:div {:data-text "$input.toUpperCase()"}]
-   [:button {:data-show "$input != ''"} "Save"]
-   [:div {:id "question"}]
-   [:button {:data-on-click "@get('/actions/quiz2')"} "Fetch a question"]])
-
-(add-watch my-question :w (fn [a b c d] (prn "this: " d)))
+   [:button {:data-show "$input != '' && $clientState.connected==false"
+             :data-on-click "@get('/actions/connect')"}
+    [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
+   [:div {:id "clientid"}]
+   [:div {:id "streamcontent"}]])
 
 (defonce counter (atom 0))
 
 (defonce the-server nil)
 
-(def a-stream (atom (set '())))
-
-(defn create-readable-stream []
-  (let [timer (atom nil)
-        start (fn [^ReadableStreamReader controller]
-                (reset! timer
-                        (js/setInterval
-                         (fn []
-                           (.enqueue controller (str "Hello, World! " @counter "\n"))
-                           (swap! counter inc))
-
-                         1000)))]
-    #js{:start start
-        :cancel (fn []
-                  (js/clearInterval @timer))}))
-
-(defn create-readable-event-stream []
-  (let [timer (atom nil)
-        start (fn [^ReadableStreamReader controller]
-                (reset! timer
-                        (js/setInterval
-                         (fn []
-                           (.mergeFragments controller (str "<div id=\"question\">" @counter "</div>"))
-                           (swap! counter inc))
-
-                         1000)))]
-    #js{:start start
-        :cancel (fn []
-                  (js/clearInterval @timer))}))
-;(defn handler [req]
-;  (let [body (js/ReadableStream. #js{:start (fn [controller] (start-stream controller))
-;                                       :cancel (fn [] (js/clearInterval @timer)))})]
-;    (js/Response. (body.pipeThrough (js/TextEncoderStream.)) #js {"content-type" "text/plain; charset=utf-8"})))
-
-
-(defn createhandler [req]
-  ;(.on req "close" (js/console.log "closing"))
-  streamhandler
-  )
+(defonce  all-streams (atom (hash-map)))
 
 (defn streamhandler [stream]
-  (swap! a-stream conj stream)
-  (js/console.log (str "adding to stream " @counter))
-  (swap! counter inc)
-  (try
-    (.mergeFragments stream (str "<div id=\"question\">hi there " @counter "</div>"))
-    (catch js/Object e
-       (.log js/console e))))
-                                                                 ;;(await (sleep 5000))                                                                        ;;(.mergeFragments stream "<div id=\"question\">you</div>")
+  (let [clientid (random-uuid)]
+    (swap! all-streams assoc clientid stream)
+    (js/console.log (str "adding to stream " @counter))
+    (swap! counter inc)
+    (try
+      (.mergeSignals stream "{clientState: {connected: true}}")
+      (.mergeFragments stream (str "<div id=\"clientid\">hi there " clientid "</div>"))
+      (catch js/Object e
+        (.log js/console e)))))
 
+(defn createhandler [req]
+  streamhandler)
 
 (defn routefn [req]
   (let [url (new js/URL req.url)
         path url.pathname]
-
     (case path
-      "/test" (new js/Response (str "<html><body>" url " " path  "</body></html") #js{:headers #js{:content-type "text/html"}})
-      "/" (new js/Response "Hi")
-      "/hic" (new js/Response (render-to-string [:html headpart page1]) #js{:headers #js{:content-type "text/html"}})
-      "/actions/quiz2" (.stream d/ServerSentEventGenerator (createhandler req) #js{:keepalive true})
-      "/actions/quiz" (let [body (new js/ReadableStream (create-readable-event-stream))]
-                        (new js/Response (.pipeThrough body (new js/TextEncoderStream)) #js{:headers #js{:content-type "text/event-stream"
-                                                                                                         :cache-control "no-cache"
-                                                                                                         :connection "keep-alive"
-                                                                                                         :transfer-encoding "chunked"}}))
-      "/stream" (let [body (new js/ReadableStream (create-readable-stream))]
-                  (new js/Response (.pipeThrough body (new js/TextEncoderStream)) #js{:headers #js{:content-type "text/event-stream"
-                                                                                                   :cache-control "no-cache"
-                                                                                                   :connection "keep-alive"
-                                                                                                   :transfer-encoding "chunked"}}))
+      "/" (new js/Response (render-to-string [:html headpart (eval page1)]) #js{:headers #js{:content-type "text/html"}})
+      "/actions/connect" (.stream d/ServerSentEventGenerator (createhandler req) #js{:keepalive true})
       (new js/Response "nope"))))
 
 (defn start-server []
@@ -108,6 +60,20 @@
 (defn stop-server [] (.shutdown the-server))
 
 (defn restart []
-  (await (p/do!
+  (p/do!
           (stop-server)
-          (start-server))))
+          (start-server)))
+
+(defn sendmsg [message n]
+  (print (second n))
+  ;(try
+    (.mergeFragments (second n) (str "<div id='streamcontent'>" message "</div>"))
+    ;(catch js/Object _ false))
+  ;true
+  )
+
+; (defn msgtransducer [msg] (map (partial sendmsg msg)))
+
+(defn broadcast [message]
+  (reset! all-streams (filter (partial sendmsg message)
+       @all-streams)))
