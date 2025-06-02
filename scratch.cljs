@@ -10,3 +10,7 @@
 
 
 (def b (assoc {} :a "a"))
+
+(for [[k v] @a] (prn k v))
+
+(update-in @a [:v] (fn [old] (str old " bye")))
