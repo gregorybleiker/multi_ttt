@@ -35,6 +35,7 @@
 (defn streamhandler [stream]
   (let [clientid (random-uuid)]
     (swap! all-streams assoc clientid stream)
+
     (js/console.log (str "adding to stream " @counter))
     (swap! counter inc)
     (try
@@ -65,15 +66,11 @@
           (start-server)))
 
 (defn sendmsg [message n]
-  (print (second n))
-  ;(try
+  (try
     (.mergeFragments (second n) (str "<div id='streamcontent'>" message "</div>"))
-    ;(catch js/Object _ false))
-  ;true
-  )
-
-; (defn msgtransducer [msg] (map (partial sendmsg msg)))
+    true?
+    (catch js/Object _ false)))
 
 (defn broadcast [message]
-  (reset! all-streams (filter (partial sendmsg message)
-       @all-streams)))
+  (reset! all-streams (into {} (filter (partial sendmsg message)
+                                       @all-streams))))
