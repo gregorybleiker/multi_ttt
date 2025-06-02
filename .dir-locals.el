@@ -1,6 +1,7 @@
-((clojurescript-mode
-  (cider-clojure-cli-aliases . ":nbb")
-  ;(cider-clojure-cli-op)
-  ;(eval . (cider-register-cljs-repl-type 'super-cljs "(do (foo) (bar))"))
-                                        ;(cider-default-cljs-repl . super-cljs)
-  ))
+;;; Directory Local Variables            -*- no-byte-compile: t -*-
+;;; For more information see (info "(emacs) Directory Variables")
+
+((clojurescript-mode . (
+                        (cider-default-cljs-repl . nbb)
+                        (cider-nbb-parameters . "run nrepl")
+                        (cider-nbb-command . "deno"))))

@@ -11,6 +11,7 @@
    (fn [resolve _]
      (js/setTimeout resolve ms))))
 
+
 (def headpart
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
