@@ -11,6 +11,7 @@
    (fn [resolve _]
      (js/setTimeout resolve ms))))
 
+;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
@@ -22,9 +23,7 @@ export class SimpleGreeting extends LitElement {
     data: {attribute: false},
   };
 
-  static get styles() {
-    return css`p { color: blue }`;
-  }
+  static styles = css`p { color: blue }`;
 
   render() {
     return html`<p>Hello, ${this.name}!</p>`;
