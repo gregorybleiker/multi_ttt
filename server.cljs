@@ -14,16 +14,36 @@
 (def headpart
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
+   [:script {:type "module"} "
+import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
+export class SimpleGreeting extends LitElement {
+  static properties = {
+    name: {type: String},
+    data: {attribute: false},
+  };
+
+  static get styles() {
+    return css`p { color: blue }`;
+  }
+
+  render() {
+    return html`<p>Hello, ${this.name}!</p>`;
+  }
+}
+customElements.define('simple-greeting', SimpleGreeting);"]
+
    [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"}]])
 
 (def page1
   [:body [:h1 "Connect to a Stream"]
-   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}}"}]
+   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}"}]
+   [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
+
    [:input {:data-bind "input"}]
    [:button {:data-show "$input != '' && $clientState.connected==false"
              :data-on-click "@get('/actions/connect')"}
     [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
-   [:div {:id "clientid"}]
+   [:div {:id "clientid" :data-attr "{blu: $input}"}]
    [:div {:id "streamcontent"}]])
 
 (defonce counter (atom 0))
