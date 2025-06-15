@@ -20,13 +20,12 @@ import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core
 export class SimpleGreeting extends LitElement {
   static properties = {
     name: {type: String},
-    data: {attribute: false},
   };
 
   static styles = css`p { color: blue }`;
 
   render() {
-    return html`<p>Hello, ${this.name}!</p>`;
+    return html`<p>Hello, ${this.name}!</p><span data-text='$input'></span`;
   }
 }
 customElements.define('simple-greeting', SimpleGreeting);"]
@@ -43,13 +42,22 @@ customElements.define('simple-greeting', SimpleGreeting);"]
              :data-on-click "@get('/actions/connect')"}
     [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
    [:div {:id "clientid" :data-attr "{blu: $input}"}]
+   [:span {:data-text "$input"}]
    [:div {:id "streamcontent"}]])
 
 (defonce counter (atom 0))
 
 (defonce the-server nil)
 
-(defonce  all-streams (atom (hash-map)))
+(defonce all-streams
+  "a map with the id as key and a collection of streams that subscribe to this key"
+  (atom (hash-map)))
+
+(defn add-stream [id stream state]
+  (update state id (fn [v] (if v (conj v stream) #{stream}))))
+
+(defn remove-stream [id stream state]
+  (update state id (fn [v] (disj v stream))))
 
 (defn streamhandler [stream]
   (let [clientid (random-uuid)]
