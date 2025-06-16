@@ -2,15 +2,13 @@
   (:require ["npm:react"]
             ["npm:react-dom/server"]
             [nbb.core :refer [await]]
+            [clojure.string :as s]
             [reagent.dom.server :refer [render-to-string]]
             ["jsr:@gavriguy/datastar-sdk" :as d]
-            [promesa.core :as p]))
+            [promesa.core :as p]
+            [applied-science.js-interop :as j]))
 
-(defn sleep [ms]
-  (js/Promise
-   (fn [resolve _]
-     (js/setTimeout resolve ms))))
-
+;; for lit
 ;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
   [:head
@@ -45,41 +43,42 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    [:span {:data-text "$input"}]
    [:div {:id "streamcontent"}]])
 
-(defonce counter (atom 0))
-
 (defonce the-server nil)
 
-(defonce all-streams
-  "a map with the id as key and a collection of streams that subscribe to this key"
+(def
+  ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
+  all-streams
   (atom (hash-map)))
 
-(defn add-stream [id stream state]
+(defn add-stream [state id stream]
   (update state id (fn [v] (if v (conj v stream) #{stream}))))
 
-(defn remove-stream [id stream state]
+(defn remove-stream [state id stream]
   (update state id (fn [v] (disj v stream))))
 
-(defn streamhandler [stream]
-  (let [clientid (random-uuid)]
-    (swap! all-streams assoc clientid stream)
+(defn streamhandler [id stream]
+  (swap! all-streams add-stream id stream)
+  (try
+    (.mergeSignals stream "{clientState: {connected: true}}")
+    (.mergeFragments stream (str "<div id=\"clientid\">hi there " id "</div>"))
+    (catch js/Object e
+      (.log js/console e))))
 
-    (js/console.log (str "adding to stream " @counter))
-    (swap! counter inc)
-    (try
-      (.mergeSignals stream "{clientState: {connected: true}}")
-      (.mergeFragments stream (str "<div id=\"clientid\">hi there " clientid "</div>"))
-      (catch js/Object e
-        (.log js/console e)))))
-
-(defn createhandler [req]
-  streamhandler)
+(defn get-signal [signals name]
+    (j/get-in signals [:signals name]))
 
 (defn routefn [req]
-  (let [url (new js/URL req.url)
-        path url.pathname]
+  (p/let [url (new js/URL req.url)
+        path url.pathname
+        signals (.readSignals d/ServerSentEventGenerator req)
+        ]
     (case path
-      "/" (new js/Response (render-to-string [:html headpart (eval page1)]) #js{:headers #js{:content-type "text/html"}})
-      "/actions/connect" (.stream d/ServerSentEventGenerator (createhandler req) #js{:keepalive true})
+      "/"
+      (new js/Response (render-to-string [:html headpart (eval page1)]) #js{:headers #js{:content-type "text/html"}})
+      "/actions/connect"
+      (.stream d/ServerSentEventGenerator                                                          (partial streamhandler (get-signal signals "input"))
+                                        ;(last (s/split path #"/")))
+               #js{:keepalive true})
       (new js/Response "nope"))))
 
 (defn start-server []
@@ -87,17 +86,22 @@ customElements.define('simple-greeting', SimpleGreeting);"]
 
 (defn stop-server [] (.shutdown the-server))
 
+;; server management
+
 (defn restart []
   (p/do!
-          (stop-server)
-          (start-server)))
+   (reset! all-streams (hash-map))
+   (stop-server)
+   (start-server)))
 
-(defn sendmsg [message n]
+(defn sendmsg [message stream]
   (try
-    (.mergeFragments (second n) (str "<div id='streamcontent'>" message "</div>"))
+    (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
     true?
     (catch js/Object _ false)))
 
-(defn broadcast [message]
+(defn broadcast [clientid message]
   (reset! all-streams (into {} (filter (partial sendmsg message)
-                                       @all-streams))))
+                                       (clientid @all-streams)))))
+(defn broadcast2 [clientid message]
+  (run! (partial sendmsg message) (clientid @all-streams)))

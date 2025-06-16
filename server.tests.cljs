@@ -15,8 +15,9 @@
     (let [val #js{:a "b"}
           key 1]
       (is (empty?
-           (:key (server/remove-stream key val
-                                        (server/add-stream key val (hash-map)))))))))
+           (:key (server/remove-stream
+                  (server/add-stream (hash-map) key val)
+                  key val)))))))
 
 ;; print name of each test
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
