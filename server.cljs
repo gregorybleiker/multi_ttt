@@ -65,13 +65,12 @@ customElements.define('simple-greeting', SimpleGreeting);"]
       (.log js/console e))))
 
 (defn get-signal [signals name]
-    (j/get-in signals [:signals name]))
+  (j/get-in signals [:signals name]))
 
 (defn routefn [req]
   (p/let [url (new js/URL req.url)
-        path url.pathname
-        signals (.readSignals d/ServerSentEventGenerator req)
-        ]
+          path url.pathname
+          signals (.readSignals d/ServerSentEventGenerator req)]
     (case path
       "/"
       (new js/Response (render-to-string [:html headpart (eval page1)]) #js{:headers #js{:content-type "text/html"}})
@@ -95,13 +94,23 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    (start-server)))
 
 (defn sendmsg [message stream]
-  (try
-    (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
-    true?
-    (catch js/Object _ false)))
+    (try
+      (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
+      true
+      (catch js/Error _e false)
+      ))
 
 (defn broadcast [clientid message]
-  (reset! all-streams (into {} (filter (partial sendmsg message)
-                                       (clientid @all-streams)))))
+  (let [successful-streams (reduce (fn [acc x]
+                                     (if (sendmsg message x)
+                                       (conj acc x)
+                                       acc))
+                                   #{}
+                                   (@all-streams clientid))]
+
+                                        (swap! all-streams assoc clientid successful-streams)
+    )
+  )
+
 (defn broadcast2 [clientid message]
-  (run! (partial sendmsg message) (clientid @all-streams)))
+  (run! (partial sendmsg message) (@all-streams clientid)))
