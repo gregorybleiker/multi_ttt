@@ -30,8 +30,24 @@ customElements.define('simple-greeting', SimpleGreeting);"]
 
    [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"}]])
 
-(def page1
+(def welcomepage
   [:body [:h1 "Connect to a Stream"]
+   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}"}]
+   [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
+
+   [:input {:data-bind "input"}]
+   [:button {:data-show "$input != '' && $clientState.connected==false"
+             :data-on-click "@get('/actions/connect')"}
+    [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
+
+   [:button {:data-on-click "@get('/actions/redirect')"}
+    [:span "Jump"]]
+   [:div {:id "clientid" :data-attr "{blu: $input}"}]
+   [:span {:data-text "$input"}]
+   [:div {:id "streamcontent"}]])
+
+(def gamepage
+  [:body [:h1 "Game On"]
    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}"}]
    [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
 
@@ -43,8 +59,7 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    [:span {:data-text "$input"}]
    [:div {:id "streamcontent"}]])
 
-(defonce the-server nil)
-
+;; Connection management
 (def
   ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
   all-streams
@@ -73,19 +88,26 @@ customElements.define('simple-greeting', SimpleGreeting);"]
           signals (.readSignals d/ServerSentEventGenerator req)]
     (case path
       "/"
-      (new js/Response (render-to-string [:html headpart (eval page1)]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
+      "/game"
+      (new js/Response (render-to-string [:html headpart (eval gamepage)]) #js{:headers #js{:content-type "text/html"}})
       "/actions/connect"
-      (.stream d/ServerSentEventGenerator                                                          (partial streamhandler (get-signal signals "input"))
-                                        ;(last (s/split path #"/")))
+      (.stream d/ServerSentEventGenerator
+               (partial streamhandler (get-signal signals "input"))
                #js{:keepalive true})
+      "/actions/redirect"
+      (let [_ (prn "redirect")]
+        (.stream d/ServerSentEventGenerator (fn [stream] (.executeScript stream "window.location = '/game'"))
+                 #js{:keepalive true}))
       (new js/Response "nope"))))
+
+;; Server
+(defonce the-server nil)
 
 (defn start-server []
   (set! the-server (js/Deno.serve routefn)))
 
 (defn stop-server [] (.shutdown the-server))
-
-;; server management
 
 (defn restart []
   (p/do!
@@ -93,12 +115,13 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    (stop-server)
    (start-server)))
 
+;; Utility/Testing functions
+
 (defn sendmsg [message stream]
-    (try
-      (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
-      true
-      (catch js/Error _e false)
-      ))
+  (try
+    (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
+    true
+    (catch js/Error _e false)))
 
 (defn broadcast [clientid message]
   (let [successful-streams (reduce (fn [acc x]
@@ -108,9 +131,7 @@ customElements.define('simple-greeting', SimpleGreeting);"]
                                    #{}
                                    (@all-streams clientid))]
 
-                                        (swap! all-streams assoc clientid successful-streams)
-    )
-  )
+    (swap! all-streams assoc clientid successful-streams)))
 
 (defn broadcast2 [clientid message]
   (run! (partial sendmsg message) (@all-streams clientid)))
