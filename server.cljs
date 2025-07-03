@@ -46,9 +46,9 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    [:span {:data-text "$input"}]
    [:div {:id "streamcontent"}]])
 
-(def gamepage
+(defn gamepage [s]
   [:body [:h1 "Game On"]
-   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}"}]
+   [:div  {:data-signals (js/JSON.stringify (j/get-in s [:signals]))}]
    [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
 
    [:input {:data-bind "input"}]
@@ -85,21 +85,25 @@ customElements.define('simple-greeting', SimpleGreeting);"]
 (defn routefn [req]
   (p/let [url (new js/URL req.url)
           path url.pathname
+          params url.searchParams
           signals (.readSignals d/ServerSentEventGenerator req)]
     (case path
       "/"
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
-      (new js/Response (render-to-string [:html headpart (eval gamepage)]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html headpart (eval (gamepage signals))]) #js{:headers #js{:content-type "text/html"}})
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler (get-signal signals "input"))
                #js{:keepalive true})
       "/actions/redirect"
       (let [_ (prn "redirect")]
-        (.stream d/ServerSentEventGenerator (fn [stream] (.executeScript stream "window.location = '/game'"))
+        (.stream d/ServerSentEventGenerator
+                 (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?" params  "')"))
+                                              ;(.mergeSignals stream signals)
+                   (prn (str params)))
                  #js{:keepalive true}))
-      (new js/Response "nope"))))
+      (new js/Response ")nope"))))
 
 ;; Server
 (defonce the-server nil)
@@ -113,7 +117,9 @@ customElements.define('simple-greeting', SimpleGreeting);"]
   (p/do!
    (reset! all-streams (hash-map))
    (stop-server)
-   (start-server)))
+   (start-server)
+   ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
+   (prn "restarted")))
 
 ;; Utility/Testing functions
 
