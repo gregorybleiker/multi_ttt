@@ -31,33 +31,19 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"}]])
 
 (def welcomepage
-  [:body [:h1 "Connect to a Stream"]
-   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}"}]
-   [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
-
+  [:body [:h1 "Start A Game"]
+   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, input: ''}" :data-persist__session "input"}]
    [:input {:data-bind "input"}]
    [:button {:data-show "$input != '' && $clientState.connected==false"
-             :data-on-click "@get('/actions/connect')"}
-    [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
-
-   [:button {:data-on-click "@get('/actions/redirect')"}
-    [:span "Jump"]]
-   [:div {:id "clientid" :data-attr "{blu: $input}"}]
-   [:span {:data-text "$input"}]
-   [:div {:id "streamcontent"}]])
+             :data-on-click "@get('/actions/redirect')"}
+    [:span {:data-text "'Start Game ' + $input.toUpperCase()"}]]
+   ])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
    [:div  {:data-signals (js/JSON.stringify (j/get-in s [:signals]))}]
-   [:simple-greeting {:data-attr "{name: $input}"}] ;;" :id "greeting"}]
-
-   [:input {:data-bind "input"}]
-   [:button {:data-show "$input != '' && $clientState.connected==false"
-             :data-on-click "@get('/actions/connect')"}
-    [:span {:data-text "'Connect ' + $input.toUpperCase()"}]]
-   [:div {:id "clientid" :data-attr "{blu: $input}"}]
-   [:span {:data-text "$input"}]
-   [:div {:id "streamcontent"}]])
+   [:simple-greeting {:data-attr "{name: $input}"}]
+   [:span {:data-text "$input"}]])
 
 ;; Connection management
 (def
