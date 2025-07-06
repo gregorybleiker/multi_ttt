@@ -16,6 +16,7 @@
    [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.js"}]
    [:script {:type  "module" :src "https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"}]
    [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.css"}]
+;;   [:style "article {aspect-ratio: 1;}"]
    [:script {:type "module"} "
 import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
 export class SimpleGreeting extends LitElement {
@@ -23,32 +24,21 @@ export class SimpleGreeting extends LitElement {
     name: {type: String},
   };
 
-  static styles = css`
-.card.square {
-  height: 100px;
-  width: 100px !important;
-  margin: 5px;
-  font-size: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-`;
+  handleClick(index) {
+    console.log(`Clicked cell ${index}`);
+  }
 
   render() {
+   const board = [0, 1, 0, 1, 0, 1, 0, 1, 0]; // example array
     return html`
-  <div class=\" row wrap \">
-  <div class=\"card square s12 m4 center-align \">X</div>
-  <div class=\"card square s12 m4 center-align \">O</div>
-  <div class=\"card square s12 m4 center-align \">X</div>
-  <div class=\"card square s12 m4 center-align \">O</div>
-  <div class=\"card square s12 m4 center-align \">X</div>
-  <div class=\"card square s12 m4 center-align \">O</div>
-  <div class=\"card square s12 m4 center-align \">X</div>
-  <div class=\"card square s12 m4 center-align \">O</div>
-  <div class=\"card square s12 m4 center-align \">X</div>
-</div>
-`;
+      <div class=\"grid\">
+        ${board.map((value, index) => html`
+          <article style=\"aspect-ratio: 1;\" class=\"s4 padding center-align middle-align extra-large-text\" @click=${() => this.handleClick(index)}>
+            ${value === 0 ? 'X' : 'O'}
+          </article>
+        `)}
+      </div>
+    `;
   }
    createRenderRoot() {
     return this;
@@ -62,12 +52,16 @@ customElements.define('simple-greeting', SimpleGreeting);"]])
    [:input {:data-bind "input"}]
    [:button {:data-show "$input != '' && $clientState.connected==false"
              :data-on-click "@get('/actions/redirect')"}
-    [:span {:data-text "'Start Game ' + $input.toUpperCase()"}]]])
+    [:span {:data-text "'Start Game ' + $input.toUpperCase()"}]]
+   [:div {:class "row wrap"} [:div {:class "card"} "x"]]])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
    [:div  {:data-signals "{input: ''}" :data-persist__session "input"}]
-   [:simple-greeting {:data-attr "{name: $input}"}]
+   [:div {:class "grid"} [:div {:class "s4"}]
+    [:div {:class "s4"}
+     [:simple-greeting {:data-attr "{name: $input}"}]]
+    [:div {:class "s4"}]]
    [:span {:data-text "$input"}]])
 
 ;; Connection management
@@ -111,10 +105,7 @@ customElements.define('simple-greeting', SimpleGreeting);"]])
       (.stream d/ServerSentEventGenerator
                (fn [stream] (.executeScript stream "setTimeout(() => window.location = '/game')"))
                #js{:keepalive true})
-      (new js/Response ")nope")
-      )
-    )
-  )
+      (new js/Response ")nope"))))
 
 ;; Server
 (defonce the-server nil)
