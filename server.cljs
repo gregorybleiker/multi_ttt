@@ -13,6 +13,9 @@
 (def headpart
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.js"}]
+   [:script {:type  "module" :src "https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"}]
+   [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.css"}]
    [:script {:type "module"} "
 import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
 export class SimpleGreeting extends LitElement {
@@ -20,15 +23,38 @@ export class SimpleGreeting extends LitElement {
     name: {type: String},
   };
 
-  static styles = css`p { color: blue }`;
+  static styles = css`
+.card.square {
+  height: 100px;
+  width: 100px !important;
+  margin: 5px;
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+`;
 
   render() {
-    return html`<p>Hello, ${this.name}!</p><span data-text='$input'></span`;
+    return html`
+  <div class=\" row wrap \">
+  <div class=\"card square s12 m4 center-align \">X</div>
+  <div class=\"card square s12 m4 center-align \">O</div>
+  <div class=\"card square s12 m4 center-align \">X</div>
+  <div class=\"card square s12 m4 center-align \">O</div>
+  <div class=\"card square s12 m4 center-align \">X</div>
+  <div class=\"card square s12 m4 center-align \">O</div>
+  <div class=\"card square s12 m4 center-align \">X</div>
+  <div class=\"card square s12 m4 center-align \">O</div>
+  <div class=\"card square s12 m4 center-align \">X</div>
+</div>
+`;
+  }
+   createRenderRoot() {
+    return this;
   }
 }
-customElements.define('simple-greeting', SimpleGreeting);"]
-
-   [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"}]])
+customElements.define('simple-greeting', SimpleGreeting);"]])
 
 (def welcomepage
   [:body [:h1 "Start A Game"]
@@ -36,12 +62,11 @@ customElements.define('simple-greeting', SimpleGreeting);"]
    [:input {:data-bind "input"}]
    [:button {:data-show "$input != '' && $clientState.connected==false"
              :data-on-click "@get('/actions/redirect')"}
-    [:span {:data-text "'Start Game ' + $input.toUpperCase()"}]]
-   ])
+    [:span {:data-text "'Start Game ' + $input.toUpperCase()"}]]])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
-   [:div  {:data-signals (js/JSON.stringify (j/get-in s [:signals]))}]
+   [:div  {:data-signals "{input: ''}" :data-persist__session "input"}]
    [:simple-greeting {:data-attr "{name: $input}"}]
    [:span {:data-text "$input"}]])
 
@@ -83,13 +108,13 @@ customElements.define('simple-greeting', SimpleGreeting);"]
                (partial streamhandler (get-signal signals "input"))
                #js{:keepalive true})
       "/actions/redirect"
-      (let [_ (prn "redirect")]
-        (.stream d/ServerSentEventGenerator
-                 (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?" params  "')"))
-                                              ;(.mergeSignals stream signals)
-                   (prn (str params)))
-                 #js{:keepalive true}))
-      (new js/Response ")nope"))))
+      (.stream d/ServerSentEventGenerator
+               (fn [stream] (.executeScript stream "setTimeout(() => window.location = '/game')"))
+               #js{:keepalive true})
+      (new js/Response ")nope")
+      )
+    )
+  )
 
 ;; Server
 (defonce the-server nil)
