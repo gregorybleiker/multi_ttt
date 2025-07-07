@@ -26,11 +26,13 @@ export class TicTacToeBoard extends LitElement {
 
   constructor() {
     super();
-    this.board = [-1 -1 -1 -1 -1 -1 -1 -1 -1];
   }
 
   handleClick(event) {
-    console.log(`Clicked cell ${event.currentTarget.dataset.cellId}`);
+    const id = event.currentTarget.dataset.cellId;
+    console.log(`Clicked cell ${id}`);
+    const e = new CustomEvent('ticked', {bubbles: true, composed: true, detail: {cellId: id}});
+    this.dispatchEvent(e);
   }
 
   render() {
@@ -75,7 +77,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
    [:div  {:data-signals "{input: ''}" :data-persist__session "input"}]
    [:div {:class "grid"} [:div {:class "s4"}]
     [:div {:class "s4"}
-     [:tic-tac-toe-board {:data-attr "{board: \"[0, 1, 0, 1, 0, 1, 0, 1, -1]\" }"}]]
+     [:tic-tac-toe-board {:data-attr "{board: \"[0, 1, 0, 1, 0, 1, 0, 1, -1]\" }" :data-on-ticked "@get('/?cellid='+evt.detail.cellId)"}]]
     [:div {:class "s4"}]]
    ])
 
