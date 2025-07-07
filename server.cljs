@@ -19,32 +19,47 @@
 ;;   [:style "article {aspect-ratio: 1;}"]
    [:script {:type "module"} "
 import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
-export class SimpleGreeting extends LitElement {
+export class TicTacToeBoard extends LitElement {
   static properties = {
-    name: {type: String},
+    board: {type: Array},
   };
 
-  handleClick(index) {
-    console.log(`Clicked cell ${index}`);
+  constructor() {
+    super();
+    this.board = [-1 -1 -1 -1 -1 -1 -1 -1 -1];
+  }
+
+  handleClick(event) {
+    console.log(`Clicked cell ${event.currentTarget.dataset.cellId}`);
   }
 
   render() {
-   const board = [0, 1, 0, 1, 0, 1, 0, 1, 0]; // example array
     return html`
       <div class=\"grid\">
-        ${board.map((value, index) => html`
-          <article style=\"aspect-ratio: 1;\" class=\"s4 padding center-align middle-align extra-large-text\" @click=${() => this.handleClick(index)}>
-            ${value === 0 ? 'X' : 'O'}
+        ${this.board.map((value, index) => {
+         let v = ' ';
+         switch (value) {
+               case 0: v = 'O'; break;
+               case 1: v = 'X'; break;
+               default: break;
+              }
+         return html`
+          <article data-cell-id=\"${index}\"
+                   style=\"aspect-ratio: 1;\"
+                   class=\"s4 padding center-align middle-align extra-large-text\"
+                   @click=\"${this.handleClick}\">
+             ${v}
           </article>
-        `)}
+        `})}
       </div>
-    `;
-  }
+      `
+    }
+
    createRenderRoot() {
     return this;
   }
 }
-customElements.define('simple-greeting', SimpleGreeting);"]])
+customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
 (def welcomepage
   [:body [:h1 "Start A Game"]
@@ -60,9 +75,9 @@ customElements.define('simple-greeting', SimpleGreeting);"]])
    [:div  {:data-signals "{input: ''}" :data-persist__session "input"}]
    [:div {:class "grid"} [:div {:class "s4"}]
     [:div {:class "s4"}
-     [:simple-greeting {:data-attr "{name: $input}"}]]
+     [:tic-tac-toe-board {:data-attr "{board: \"[0, 1, 0, 1, 0, 1, 0, 1, -1]\" }"}]]
     [:div {:class "s4"}]]
-   [:span {:data-text "$input"}]])
+   ])
 
 ;; Connection management
 (def
