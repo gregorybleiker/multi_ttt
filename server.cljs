@@ -74,12 +74,13 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
-   [:div  {:data-signals "{input: ''}" :data-persist__session "input"}]
+   [:div  {:data-signals "{input: '', board: '[-1, -1, 1]'}" :data-persist__session "input"}]
+   [:div {:data-on-load "@get('/actions/connect')"}]
    [:div {:class "grid"} [:div {:class "s4"}]
     [:div {:class "s4"}
-     [:tic-tac-toe-board {:data-attr "{board: \"[0, 1, 0, 1, 0, 1, 0, 1, -1]\" }" :data-on-ticked "@get('/?cellid='+evt.detail.cellId)"}]]
+     [:tic-tac-toe-board {:data-attr "{board: $board}" :data-on-ticked "@get('/?cellid='+evt.detail.cellId)"}]]
     [:div {:class "s4"}]]
-   ])
+   [:div {:id "status"}]])
 
 ;; Connection management
 (def
@@ -88,18 +89,22 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (atom (hash-map)))
 
 (defn add-stream [state id stream]
-  (update state id (fn [v] (if v (conj v stream) #{stream}))))
+  (-> state
+      (update-in [id :streams] (fn [v] (if v (conj v stream) #{stream})))
+      (update-in [id :board] (fn [b] (if b b [-1 -1 -1 -1 -1 -1 -1 -1 -1])))))
 
 (defn remove-stream [state id stream]
   (update state id (fn [v] (disj v stream))))
 
 (defn streamhandler [id stream]
   (swap! all-streams add-stream id stream)
-  (try
-    (.mergeSignals stream "{clientState: {connected: true}}")
-    (.mergeFragments stream (str "<div id=\"clientid\">hi there " id "</div>"))
-    (catch js/Object e
-      (.log js/console e))))
+  (let [b (get-in @all-streams [id :board])]
+    (try
+      (doto stream
+        (.mergeSignals (str "{clientState: {connected: true}, board: '[" (clojure.string/join "," b) "]'}"))
+        (.mergeFragments (str "<div id=\"status\">hi there " id "</div>")))
+      (catch js/Object e
+        (.log js/console e)))))
 
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
@@ -144,7 +149,9 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
 (defn sendmsg [message stream]
   (try
-    (.mergeFragments stream (str "<div id='streamcontent'>" message "</div>"))
+    (doto stream
+      (.mergeFragments (str "<div id='status'>" message "</div>"))
+      (.mergeSignals  "{board: '[1,1,1,1,1,1,1,1,1]'}"))
     true
     (catch js/Error _e false)))
 
@@ -154,9 +161,9 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
                                        (conj acc x)
                                        acc))
                                    #{}
-                                   (@all-streams clientid))]
+                                   (get-in @all-streams [clientid :streams]))]
 
-    (swap! all-streams assoc clientid successful-streams)))
+    (swap! all-streams assoc-in [clientid :streams] successful-streams)))
 
 (defn broadcast2 [clientid message]
   (run! (partial sendmsg message) (@all-streams clientid)))
