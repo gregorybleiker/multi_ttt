@@ -27,3 +27,17 @@
 (for [[k v] @a] (prn k v))
 
 (update-in @a [:v] (fn [old] (str old " bye")))
+
+#js[1,2,3]
+
+(j/array [1 2 3])
+
+(require '[applied-science.js-interop :as j])
+
+(js/Array.from [1 2])
+
+(into-array [1 2])
+
+(into-array #js[1,2])
+
+(j/lit #js[1,2])

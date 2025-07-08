@@ -21,11 +21,12 @@
 import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
 export class TicTacToeBoard extends LitElement {
   static properties = {
-    board: {type: Array},
-  };
+    board: { type: Array }
+  }
 
   constructor() {
     super();
+this.board = [];
   }
 
   handleClick(event) {
@@ -75,11 +76,11 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
-   [:div  {:data-signals "{input: '', board: [-1, -1, 1]}" :data-persist__session "input"}]
+   [:div  {:data-signals "{input: '', board: [0]}" :data-persist__session "input"}]
    [:div {:data-on-load "@get('/actions/connect')"}]
    [:div {:class "grid"} [:div {:class "s4"}]
     [:div {:class "s4"}
-     [:tic-tac-toe-board {:data-attr "{board: $board}" :data-on-ticked "$board[evt.detail.cellId]=1; @get('/actions/toggle')"}]]
+     [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked "$board[evt.detail.cellId]=1; @get('/actions/toggle')"}]]
     [:div {:class "s4"}]]
    [:div {:id "status"}]])
 
@@ -102,7 +103,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (let [b (get-in @all-streams [id :board])]
     (try
       (doto stream
-        (.mergeSignals (str "{clientState: {connected: true}, board: " (js/JSON.stringify (j/lit [1 2])) "}"))
+        (.mergeSignals (str "{board: [" (into-array b) "]}"))
         (.mergeFragments (str "<div id=\"status\">hi there " id "</div>")))
       (catch js/Object e
         (.log js/console e)))))
@@ -121,8 +122,8 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
       "/game"
       (new js/Response (render-to-string [:html headpart (eval (gamepage signals))]) #js{:headers #js{:content-type "text/html"}})
       "/actions/toggle"
-      (let [_ (prn (get-signal signals "board"))]
-       (new js/Response "toggle"))
+      (let [_ (prn (str "board:" (j/lit (get-signal signals "board"))))]
+        (new js/Response "toggle"))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler (get-signal signals "input"))
