@@ -30,6 +30,7 @@ export class TicTacToeBoard extends LitElement {
 
   handleClick(event) {
     const id = event.currentTarget.dataset.cellId;
+    this.board[id]='X';
     console.log(`Clicked cell ${id}`);
     const e = new CustomEvent('ticked', {bubbles: true, composed: true, detail: {cellId: id}});
     this.dispatchEvent(e);
@@ -74,11 +75,11 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
 (defn gamepage [s]
   [:body [:h1 "Game On"]
-   [:div  {:data-signals "{input: '', board: '[-1, -1, 1]'}" :data-persist__session "input"}]
+   [:div  {:data-signals "{input: '', board: [-1, -1, 1]}" :data-persist__session "input"}]
    [:div {:data-on-load "@get('/actions/connect')"}]
    [:div {:class "grid"} [:div {:class "s4"}]
     [:div {:class "s4"}
-     [:tic-tac-toe-board {:data-attr "{board: $board}" :data-on-ticked "@get('/?cellid='+evt.detail.cellId)"}]]
+     [:tic-tac-toe-board {:data-attr "{board: $board}" :data-on-ticked "$board[evt.detail.cellId]=1; @get('/actions/toggle')"}]]
     [:div {:class "s4"}]]
    [:div {:id "status"}]])
 
@@ -91,7 +92,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 (defn add-stream [state id stream]
   (-> state
       (update-in [id :streams] (fn [v] (if v (conj v stream) #{stream})))
-      (update-in [id :board] (fn [b] (if b b [-1 -1 -1 -1 -1 -1 -1 -1 -1])))))
+      (update-in [id :board] (fn [b] (if b b [1 -1 -1 -1 -1 -1 -1 -1 -1])))))
 
 (defn remove-stream [state id stream]
   (update state id (fn [v] (disj v stream))))
@@ -101,7 +102,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (let [b (get-in @all-streams [id :board])]
     (try
       (doto stream
-        (.mergeSignals (str "{clientState: {connected: true}, board: '[" (clojure.string/join "," b) "]'}"))
+        (.mergeSignals (str "{clientState: {connected: true}, board: " (js/JSON.stringify (j/lit [1 2])) "}"))
         (.mergeFragments (str "<div id=\"status\">hi there " id "</div>")))
       (catch js/Object e
         (.log js/console e)))))
@@ -119,6 +120,9 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
       (new js/Response (render-to-string [:html headpart (eval (gamepage signals))]) #js{:headers #js{:content-type "text/html"}})
+      "/actions/toggle"
+      (let [_ (prn (get-signal signals "board"))]
+       (new js/Response "toggle"))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler (get-signal signals "input"))
@@ -127,7 +131,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
       (.stream d/ServerSentEventGenerator
                (fn [stream] (.executeScript stream "setTimeout(() => window.location = '/game')"))
                #js{:keepalive true})
-      (new js/Response ")nope"))))
+      (new js/Response "nope"))))
 
 ;; Server
 (defonce the-server nil)
