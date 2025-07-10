@@ -41,3 +41,7 @@
 (into-array #js[1,2])
 
 (j/lit #js[1,2])
+
+(def d [1 2 3 4])
+(update d 0 (fn[_] 3))
+d
