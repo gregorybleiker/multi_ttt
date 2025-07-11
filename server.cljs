@@ -67,18 +67,18 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 (def welcomepage
   [:body
    [:main
-    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, gameid: ''}" :data-persist__session "gameid"}]
+    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game-id: ''}" :data-persist__session "game-id"}]
     [:div {:class "grid"}
      [:div {:class "s4"}]
      [:div {:class "s4"}
       [:article {:class "border medium no-padding"}
        [:h5 "Start A Game"]
        [:div {:class "padding absolute center middle"}
-        [:input {:data-bind "gameid"}]
+        [:input {:data-bind "game-id"}]
         [:div {:class "space"}]
-        [:button {:data-show "$gameid != '' && $clientState.connected==false"
+        [:button {:data-show "$game-id != '' && $clientState.connected==false"
                   :data-on-click "@get('/actions/redirect')"}
-         [:span {:data-text "'Start Game ' + $gameid.toUpperCase()"}]]]]]
+         [:span {:data-text "'Start Game ' + $game-id.toUpperCase()"}]]]]]
      [:div {:class "s4"}]]]])
 
 (defn gamepage [s]
