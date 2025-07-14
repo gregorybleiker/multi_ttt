@@ -8,6 +8,12 @@
             [promesa.core :as p]
             [applied-science.js-interop :as j]))
 
+(def
+  ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
+  all-streams
+  (atom (hash-map)))
+
+
 ;; for lit
 ;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
@@ -67,35 +73,38 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 (def welcomepage
   [:body
    [:main
-    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game-id: ''}" :data-persist__session "game-id"}]
+    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game_id: ''}"}]
     [:div {:class "grid"}
      [:div {:class "s4"}]
      [:div {:class "s4"}
       [:article {:class "border medium no-padding"}
        [:h5 "Start A Game"]
        [:div {:class "padding absolute center middle"}
-        [:input {:data-bind "game-id"}]
+        [:input {:data-bind "game_id"}]
         [:div {:class "space"}]
-        [:button {:data-show "$game-id != '' && $clientState.connected==false"
+        [:button {:data-show "$game_id != '' && $clientState.connected==false"
                   :data-on-click "@get('/actions/redirect')"}
-         [:span {:data-text "'Start Game ' + $game-id.toUpperCase()"}]]]]]
+         [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]
      [:div {:class "s4"}]]]])
 
-(defn gamepage [s]
-  [:body [:h1 "Game On"]
-   [:div  {:data-signals "{game-id: '', board: [-1,-1,-1,-1,-1,-1,-1,-1,-1] }" :data-persist__session "game-id"}]
-   [:div {:data-on-load "@get('/actions/connect')"}]
-   [:div {:class "grid"} [:div {:class "s4"}]
-    [:div {:class "s4"}
-     [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked "$board[evt.detail.cellId]=1; @get('/actions/toggle?'+$board[0])"}]]
-    [:div {:class "s4"}]]
-   [:div {:id "status"}]])
+(defn gamepage [game_id]
+  (let [c (count (get-in @all-streams [game_id :streams]))
+        playertype (case c
+                     0 "First player"
+                     1 "Second player"
+                     "Full")
+        ]
+
+    [:body [:h1 (str "Game On " playertype)]
+     [:div  {:data-signals (str "{game_id:" (js/JSON.stringify game_id) ", board: [-1,-1,-1,-1,-1,-1,-1,-1,-1] }")}]
+     [:div {:data-on-load "@get('/actions/connect')"}]
+     [:div {:class "grid"} [:div {:class "s4"}]
+      [:div {:class "s4"}
+       [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked "$board[evt.detail.cellId]=1; @get('/actions/toggle?'+$board[0])"}]]
+      [:div {:class "s4"}]]
+     [:div {:id "status"}]]))
 
 ;; Connection management
-(def
-  ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
-  all-streams
-  (atom (hash-map)))
 
 (defn sendmsg [message board stream]
   (try
@@ -145,26 +154,28 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (p/let [url (new js/URL req.url)
           path url.pathname
           params url.searchParams
+          _ (prn params)
+          url_game_id (.get params "game_id")
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
-          game-id (get-signal signals "game-id")]
+          game_id (get-signal signals "game_id")]
     (case path
       "/"
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
-      (new js/Response (render-to-string [:html headpart (eval (gamepage signals))]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html headpart (eval (gamepage url_game_id))]) #js{:headers #js{:content-type "text/html"}})
       "/actions/toggle"
       (let [_ (prn (str "board:" (j/lit board)))]
-        (set-board game-id board)
-        (broadcast game-id "updating...")
+        (set-board game_id board)
+        (broadcast game_id "updating...")
         (new js/Response "toggle"))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
-               (partial streamhandler game-id)
+               (partial streamhandler game_id)
                #js{:keepalive true})
       "/actions/redirect"
       (.stream d/ServerSentEventGenerator
-               (fn [stream] (.executeScript stream "setTimeout(() => window.location = '/game')"))
+               (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?game_id=" game_id  "')")))
                #js{:keepalive true})
       (new js/Response "nope"))))
 

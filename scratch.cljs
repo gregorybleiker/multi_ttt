@@ -3,13 +3,14 @@
 (def a (atom (hash-map)))
 
 (defn add-stream [state id stream]
-  (-> state
-  (update-in [id :streams] (fn [v] (if v (conj v stream) #{stream})))
-  (update-in [id :board] (fn [b] (if b b [-1 -1 -1 -1 -1 -1 -1 -1 -1])))
+  (update-in state [id :streams] (fn [v] (if v (conj v stream) #{stream})))
+;  (update-in [id :board] (fn [b] (if b b [-1 -1 -1 -1 -1 -1 -1 -1 -1])))
   )
- )
 
-(swap! a add-stream "b" "ab")
+
+(swap! a add-stream "b" "uu")
+@a
+(count (get-in @a ["b" :streams]))
 (comment
   @a
   (get-in @a ["b" :board])
