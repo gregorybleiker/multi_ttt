@@ -8,7 +8,6 @@
             [promesa.core :as p]
             [applied-science.js-interop :as j]))
 
-
 (defn to-js [s] (js/JSON.stringify (clj->js s)))
 
 (def
@@ -99,17 +98,17 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
                      "Full")]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body [:h1 (str "Game On " playertype)]
-         [:div  {:data-signals (str "{game_id:" (to-js game_id) ", board:'[]'}")}]
+         [:div  {:data-signals (str "{game_id:" (to-js game_id) ", playertype: " c ", board:'[]'}")}]
          [:div {:data-on-load "@get('/actions/connect')"}]
          [:div {:class "grid"} [:div {:class "s4"}]
           [:div {:class "s4"}
-           [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked (str "$board[evt.detail.cellId]=" c  ";@get('/actions/toggle')")}]]
+           [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked "@get(`/actions/toggle?cellId=${evt.detail.cellId}`)"}]]
           [:div {:class "s4"}]]
          [:div {:id "status"}]])))
 
 ;; Connection management
 
-(defn sendmsg [message board stream]
+(defn send-message [message board stream]
   (try
     (doto stream
       (.mergeFragments (str "<div id='status'>" message "</div>"))
@@ -120,7 +119,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 (defn broadcast [clientid message]
   (let [board (get-in @all-streams [clientid :board])
         successful-streams (reduce (fn [acc x]
-                                     (if (sendmsg message board x)
+                                     (if (send-message message board x)
                                        (conj acc x)
                                        acc))
                                    #{}
@@ -128,8 +127,13 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
     (swap! all-streams assoc-in [clientid :streams] successful-streams)))
 
-(defn set-board [id board]
-  (swap! all-streams (fn [state] (update-in state [id :board] (fn [_] board )))))
+(defn set-board [game-id board]
+  (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
+
+(defn update-board [game-id cell-id v]
+  (let [board (get-in @all-streams [game-id :board])
+        new-board (assoc board cell-id v)]
+    (set-board game-id new-board)))
 
 (defn ensure-init-board [id]
   (swap! all-streams (fn [state] (update-in state [id :board] (fnil identity (vec (repeat 9 -1)))))))
@@ -138,19 +142,12 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (swap! all-streams (fn [state]
                        (update-in state [id :streams] (fn [v] (if v (conj v stream) #{stream}))))))
 
-(defn update-board [state id index]
-  (-> state
-      (update-in [id :board] (fn [b] (update b index (fn [_] 1))))))
-
-(defn remove-stream [state id stream]
-  (update state id (fn [v] (disj v stream))))
-
 (defn streamhandler [id stream]
   (add-stream id stream)
   (ensure-init-board id)
   (let [b (get-in @all-streams [id :board])]
     (try
-      (sendmsg "welcome" b stream)
+      (send-message "welcome" b stream)
       (catch js/Object e
         (.log js/console e)))))
 
@@ -161,20 +158,22 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (p/let [url (new js/URL req.url)
           path url.pathname
           params url.searchParams
-          url_game_id (.get params "game_id")
+          url-game-id (.get params "game_id")
+          url_cell_id (parse-long (or (.get params "cellId") ""))
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
-          game_id (get-signal signals "game_id")]
+          game_id (get-signal signals "game_id")
+          playertype (get-signal signals "playertype")]
     (case path
       "/"
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
-      (new js/Response (render-to-string [:html headpart (eval (gamepage url_game_id))]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html headpart (eval (gamepage url-game-id))]) #js{:headers #js{:content-type "text/html"}})
       "/actions/toggle"
-      (let [_ (prn (str "board:" (to-js board)))]
-        (set-board game_id board)
+      (let [_ (prn (str "cellid:" url_cell_id))]
+        (update-board game_id url_cell_id playertype)
         (broadcast game_id "updating...")
-        (new js/Response "toggle"))
+        (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler game_id)
@@ -200,8 +199,3 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
    (start-server)
    ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
    (prn "restarted")))
-
-;; Utility/Testing functions
-
-(defn broadcast2 [clientid message]
-  (run! (partial sendmsg message) (@all-streams clientid)))

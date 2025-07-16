@@ -46,3 +46,5 @@
 (def d [1 2 3 4])
 (update d 0 (fn[_] 3))
 d
+
+(def ar [1 2 3])
