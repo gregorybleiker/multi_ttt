@@ -15,6 +15,27 @@
   all-streams
   (atom (hash-map)))
 
+(defn set-board [game-id board]
+  (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
+
+(defn toggle-player [game-id]
+  (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= 0 old-player) 1 0))))))
+
+(defn update-board [game-id cell-id v]
+  (let [board (get-in @all-streams [game-id :board])
+        new-board (assoc board cell-id v)]
+    (set-board game-id new-board)))
+
+(defn ensure-init-board [game-id]
+  (swap! all-streams (fn [state]
+                       (-> state
+                           (update-in [game-id :board] (fnil identity (vec (repeat 9 -1))))
+                           (update-in [game-id :player] (fnil identity 0))))))
+
+(defn add-stream [id stream]
+  (swap! all-streams (fn [state]
+                       (update-in state [id :streams] (fn [v] (if v (conj v stream) #{stream}))))))
+
 ;; for lit
 ;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
@@ -127,21 +148,6 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
 
     (swap! all-streams assoc-in [clientid :streams] successful-streams)))
 
-(defn set-board [game-id board]
-  (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
-
-(defn update-board [game-id cell-id v]
-  (let [board (get-in @all-streams [game-id :board])
-        new-board (assoc board cell-id v)]
-    (set-board game-id new-board)))
-
-(defn ensure-init-board [id]
-  (swap! all-streams (fn [state] (update-in state [id :board] (fnil identity (vec (repeat 9 -1)))))))
-
-(defn add-stream [id stream]
-  (swap! all-streams (fn [state]
-                       (update-in state [id :streams] (fn [v] (if v (conj v stream) #{stream}))))))
-
 (defn streamhandler [id stream]
   (add-stream id stream)
   (ensure-init-board id)
@@ -162,25 +168,30 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
           url_cell_id (parse-long (or (.get params "cellId") ""))
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
-          game_id (get-signal signals "game_id")
+          game-id (get-signal signals "game_id")
           playertype (get-signal signals "playertype")]
     (case path
       "/"
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
-      (new js/Response (render-to-string [:html headpart (eval (gamepage url-game-id))]) #js{:headers #js{:content-type "text/html"}})
+      (do (broadcast game-id "cleanup")
+          (new js/Response (render-to-string [:html headpart (eval (gamepage url-game-id))]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (let [_ (prn (str "cellid:" url_cell_id))]
-        (update-board game_id url_cell_id playertype)
-        (broadcast game_id "updating...")
+      (let [_ (prn (str "cellid:" url_cell_id))
+            current-player (get-in @all-streams [game-id :player])]
+
+        (when (= playertype current-player) (do
+                                              (update-board game-id url_cell_id playertype)
+                                              (toggle-player game-id)
+                                              (broadcast game-id "updating...")))
         (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
-               (partial streamhandler game_id)
+               (partial streamhandler game-id)
                #js{:keepalive true})
       "/actions/redirect"
       (.stream d/ServerSentEventGenerator
-               (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?game_id=" game_id  "')")))
+               (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?game_id=" (s/upper-case  game-id)  "')")))
                #js{:keepalive true})
       (new js/Response "nope"))))
 
