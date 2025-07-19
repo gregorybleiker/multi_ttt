@@ -18,6 +18,10 @@
 (defn set-board [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
+(defn board-to-fragment [board]
+  (into [:div {:class "grid" :id "board"}]
+        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (get board x)])))
+
 (defn toggle-player [game-id]
   (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= 0 old-player) 1 0))))))
 
@@ -61,7 +65,8 @@
         playertype (case c
                      0 "First player"
                      1 "Second player"
-                     "Full")]
+                     "Full")
+        board (get-in @all-streams [game-id :board])]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body
          [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " c ", board:'[]'}")}]
@@ -69,42 +74,35 @@
          [:div {:class "columns"} [:div {:class "column"}]
           [:div {:class "column has-text-centered"}
            [:h1 {:class "title"} (str "Game On " playertype)]
-           [:div {:class "fixed-grid has-3-cols"}
-            (into [:div {:class "grid " :id "board"}]
-                  (for [x (range 0 9)] [:div {:class "cell" :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} x]))]
+           [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board)]
            [:div {:id "status"}]]
           [:div {:class "column"}]]])))
 
 ;; Connection management
 
-(defn send-message [message board stream]
+(defn send-message [stream board]
   (try
     (doto stream
-      (.mergeFragments (str "<div id='status'>" message "</div>"))
-      (.mergeFragments (render-to-string [:div {:id (str "cell-" 0)} "hello"]))
-      (.mergeSignals  (str "{board: " (to-js board) "}")))
+      (.mergeFragments "<div id='status'>updating...</div>")
+      (.mergeFragments (render-to-string (board-to-fragment board))))
     true
     (catch js/Error _e false)))
 
-(defn broadcast [game-id message]
+(defn broadcast [game-id]
   (let [board (get-in @all-streams [game-id :board])
-        successful-streams (reduce (fn [acc x]
-                                     (if (send-message message board x)
-                                       (conj acc x)
+        successful-streams (reduce (fn [acc stream]
+                                     (if (send-message stream board)
+                                       (conj acc stream)
                                        acc))
                                    #{}
                                    (get-in @all-streams [game-id :streams]))]
-
     (swap! all-streams assoc-in [game-id :streams] successful-streams)))
 
 (defn streamhandler [game-id stream]
   (add-stream game-id stream)
   (ensure-init-board game-id)
-  (let [b (get-in @all-streams [game-id :board])]
-    (try
-      (send-message "welcome" b stream)
-      (catch js/Object e
-        (.log js/console e)))))
+  (broadcast game-id)
+  )
 
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
@@ -123,7 +121,7 @@
       "/"
       (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
       "/game"
-      (do (broadcast game-id "cleanup")
+      (do (broadcast url-game-id)
           (new js/Response (render-to-string [:html headpart (eval (gamepage url-game-id))]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
       (let [_ (prn (str "cellid:" url_cell_id))
