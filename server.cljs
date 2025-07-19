@@ -18,9 +18,15 @@
 (defn set-board [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
+(defn number-to-xo [n]
+  (case n
+    0 "O"
+    1 "X"
+    " "))
+
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
-        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (get board x)])))
+        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (number-to-xo (get board x))])))
 
 (defn toggle-player [game-id]
   (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= 0 old-player) 1 0))))))
