@@ -4,7 +4,7 @@
             [nbb.core :refer [await]]
             [clojure.string :as s]
             [reagent.dom.server :refer [render-to-string]]
-            ["jsr:@gavriguy/datastar-sdk" :as d]
+            ["npm:datastar-sdk/web" :as d]
             [promesa.core :as p]
             [applied-science.js-interop :as j]))
 
@@ -40,92 +40,40 @@
 ;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
   [:head
-   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.0-beta.11/bundles/datastar.js"}]
-   [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.js"}]
-   [:script {:type  "module" :src "https://cdn.jsdelivr.net/npm/material-dynamic-colors@1.1.2/dist/cdn/material-dynamic-colors.min.js"}]
-   [:link {:rel "stylesheet" :href "https://cdn.jsdelivr.net/npm/beercss@3.11.30/dist/cdn/beer.min.css"}]
-;;   [:style "article {aspect-ratio: 1;}"]
-   [:script {:type "module"} "
-import {css, html, LitElement} from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js'
-export class TicTacToeBoard extends LitElement {
-  static properties = {
-    board: { type: Array }
-  }
-
-  constructor() {
-    super();
-  }
-
-  handleClick(event) {
-    const id = event.currentTarget.dataset.cellId;
-    this.board[id]='X';
-    console.log(`Clicked cell ${id}`);
-    const e = new CustomEvent('ticked', {bubbles: true, composed: true, detail: {cellId: id}});
-    this.dispatchEvent(e);
-  }
-
-  render() {
-    if(this.board){
-    return html`
-      <div class=\"grid\">
-        ${this.board.map((value, index) => {
-         let v = ' ';
-         switch (value) {
-               case 0: v = 'O'; break;
-               case 1: v = 'X'; break;
-               default: break;
-              }
-         return html`
-          <article data-cell-id=\"${index}\"
-                   style=\"aspect-ratio: 1;\"
-                   class=\"s4 padding center-align middle-align extra-large-text\"
-                   @click=\"${this.handleClick}\">
-             ${v}
-          </article>
-        `})}
-      </div>
-      `
-      }
-    }
-
-   createRenderRoot() {
-    return this;
-  }
-}
-customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"}]
+   [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]])
 
 (def welcomepage
   [:body
-   [:main
-    [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game_id: ''}"}]
-    [:div {:class "grid"}
-     [:div {:class "s4"}]
-     [:div {:class "s4"}
-      [:article {:class "border medium no-padding"}
-       [:h5 "Start A Game"]
-       [:div {:class "padding absolute center middle"}
-        [:input {:data-bind "game_id"}]
-        [:div {:class "space"}]
-        [:button {:data-show "$game_id != '' && $clientState.connected==false"
-                  :data-on-click "@get('/actions/redirect')"}
-         [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]
-     [:div {:class "s4"}]]]])
+   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game_id: ''}"}]
+   [:section {:class "section"}
+    [:div {:class "container has-text-centered"}
+     [:h1 {:class "title"} "Start A Game"]
+     [:div {:class "block"}
+     [:input {:data-bind "game_id"}]]
+     [:div {:class "block"}
+     [:button {:class "button" :data-show "$game_id != '' && $clientState.connected==false"
+               :data-on-click "@get('/actions/redirect')"}
+      [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
-(defn gamepage [game_id]
-  (let [c (count (get-in @all-streams [game_id :streams]))
+(defn gamepage [game-id]
+  (let [c (count (get-in @all-streams [game-id :streams]))
         playertype (case c
                      0 "First player"
                      1 "Second player"
                      "Full")]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
-        [:body [:h1 (str "Game On " playertype)]
-         [:div  {:data-signals (str "{game_id:" (to-js game_id) ", playertype: " c ", board:'[]'}")}]
+        [:body
+         [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " c ", board:'[]'}")}]
          [:div {:data-on-load "@get('/actions/connect')"}]
-         [:div {:class "grid"} [:div {:class "s4"}]
-          [:div {:class "s4"}
-           [:tic-tac-toe-board {:data-attr "{board: '[' + $board + ']'}" :data-on-ticked "@get(`/actions/toggle?cellId=${evt.detail.cellId}`)"}]]
-          [:div {:class "s4"}]]
-         [:div {:id "status"}]])))
+         [:div {:class "columns"} [:div {:class "column"}]
+          [:div {:class "column has-text-centered"}
+           [:h1 {:class "title"} (str "Game On " playertype)]
+           [:div {:class "fixed-grid has-3-cols"}
+            (into [:div {:class "grid " :id "board"}]
+                  (for [x (range 0 9)] [:div {:class "cell" :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} x]))]
+           [:div {:id "status"}]]
+          [:div {:class "column"}]]])))
 
 ;; Connection management
 
@@ -133,25 +81,26 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
   (try
     (doto stream
       (.mergeFragments (str "<div id='status'>" message "</div>"))
+      (.mergeFragments (render-to-string [:div {:id (str "cell-" 0)} "hello"]))
       (.mergeSignals  (str "{board: " (to-js board) "}")))
     true
     (catch js/Error _e false)))
 
-(defn broadcast [clientid message]
-  (let [board (get-in @all-streams [clientid :board])
+(defn broadcast [game-id message]
+  (let [board (get-in @all-streams [game-id :board])
         successful-streams (reduce (fn [acc x]
                                      (if (send-message message board x)
                                        (conj acc x)
                                        acc))
                                    #{}
-                                   (get-in @all-streams [clientid :streams]))]
+                                   (get-in @all-streams [game-id :streams]))]
 
-    (swap! all-streams assoc-in [clientid :streams] successful-streams)))
+    (swap! all-streams assoc-in [game-id :streams] successful-streams)))
 
-(defn streamhandler [id stream]
-  (add-stream id stream)
-  (ensure-init-board id)
-  (let [b (get-in @all-streams [id :board])]
+(defn streamhandler [game-id stream]
+  (add-stream game-id stream)
+  (ensure-init-board game-id)
+  (let [b (get-in @all-streams [game-id :board])]
     (try
       (send-message "welcome" b stream)
       (catch js/Object e
@@ -165,7 +114,7 @@ customElements.define('tic-tac-toe-board', TicTacToeBoard);"]])
           path url.pathname
           params url.searchParams
           url-game-id (.get params "game_id")
-          url_cell_id (parse-long (or (.get params "cellId") ""))
+          url_cell_id (parse-long (or (.get params "cell_id") ""))
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
           game-id (get-signal signals "game_id")
