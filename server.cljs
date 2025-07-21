@@ -89,29 +89,22 @@
     true
     (catch js/Error _e  (let [_ (prn "error" _e)] false))))
 
-(defn clean-streams [game-id playertype]
+(defn clean-stream [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])
-        streams (get-in @all-streams [game-id :streams playertype])
-        successful-streams (reduce (fn [acc stream]
-                                     (if (send-message stream board "cleaning")
-                                       (conj acc stream)
-                                       acc))
-                                   #{}
-                                   streams)]
-    (swap! all-streams assoc-in [game-id :streams playertype] successful-streams)))
+        stream (get-in @all-streams [game-id :streams playertype])]
+        (when-not (send-message stream board "cleaning")
+    (swap! all-streams update-in [game-id :streams] dissoc playertype))))
 
 (defn broadcast [game-id]
   (let [player (get-in @all-streams [game-id :player])
         board (get-in @all-streams [game-id :board])
-        streamX (get-in @all-streams [game-id :streams "X"])
-        streamO (get-in @all-streams [game-id :streams "O"])
-        _ (prn streamX streamO)]
-    (doseq [s [streamX streamO]]
-    (send-message s board (str "waiting for " player)))))
+        streams (get-in @all-streams [game-id :streams])]
+    (doseq [s streams]
+      (send-message (second s) board (str "waiting for " player)))))
 
 (defn streamhandler [game-id playertype stream]
   (ensure-init-board game-id)
-  (clean-streams game-id playertype)
+  (clean-stream game-id playertype)
   (add-stream game-id playertype stream)
   (broadcast game-id))
 
