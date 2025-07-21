@@ -18,18 +18,12 @@
 (defn set-board [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
-(defn number-to-xo [n]
-  (case n
-    0 "O"
-    1 "X"
-    " "))
-
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
-        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (number-to-xo (get board x))])))
+        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (get board x)])))
 
 (defn toggle-player [game-id]
-  (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= 0 old-player) 1 0))))))
+  (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= "X" old-player) "O" "X"))))))
 
 (defn update-board [game-id cell-id v]
   (let [board (get-in @all-streams [game-id :board])
@@ -39,12 +33,13 @@
 (defn ensure-init-board [game-id]
   (swap! all-streams (fn [state]
                        (-> state
-                           (update-in [game-id :board] (fnil identity (vec (repeat 9 -1))))
-                           (update-in [game-id :player] (fnil identity 0))))))
+                           (update-in [game-id :board] (fnil identity (vec (repeat 9 " "))))
+                           (update-in [game-id :player] (fnil identity "X"))))))
 
-(defn add-stream [id stream]
-  (swap! all-streams (fn [state]
-                       (update-in state [id :streams] (fn [v] (if v (conj v stream) #{stream}))))))
+(defn add-stream [game-id stream]
+  (let [_ (prn "adding stream" (to-js stream))]
+    (swap! all-streams (fn [state]
+                         (update-in state [game-id :streams] (fn [v] (if v (conj v stream) #{stream})))))))
 
 ;; for lit
 ;; see also https://github.com/starfederation/datastar/issues/356
@@ -55,60 +50,63 @@
 
 (def welcomepage
   [:body
-   [:div  {:data-signals "{clientState: {connected: false, clientid: ''}, game_id: ''}"}]
+   [:div  {:data-signals "{game_id: ''}"}]
    [:section {:class "section"}
     [:div {:class "container has-text-centered"}
      [:h1 {:class "title"} "Start A Game"]
      [:div {:class "block"}
-     [:input {:data-bind "game_id"}]]
+      [:input {:data-bind "game_id"}]]
      [:div {:class "block"}
-     [:button {:class "button" :data-show "$game_id != '' && $clientState.connected==false"
-               :data-on-click "@get('/actions/redirect')"}
-      [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
+      [:button {:class "button" :data-show "$game_id != ''"
+                :data-on-click "@get('/actions/redirect')"}
+       [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
 (defn gamepage [game-id]
   (let [c (count (get-in @all-streams [game-id :streams]))
+        _ (prn "calling gamepage with " c)
         playertype (case c
-                     0 "First player"
-                     1 "Second player"
+                     0 "X"
+                     1 "O"
                      "Full")
         board (get-in @all-streams [game-id :board])]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body
-         [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " c ", board:'[]'}")}]
+         [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " (to-js playertype) ", board:'[]'}")}]
          [:div {:data-on-load "@get('/actions/connect')"}]
-         [:div {:class "columns"} [:div {:class "column"}]
-          [:div {:class "column has-text-centered"}
-           [:h1 {:class "title"} (str "Game On " playertype)]
-           [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board)]
-           [:div {:id "status"}]]
-          [:div {:class "column"}]]])))
+         [:div {:class "section"}
+          [:div {:class "container"}
+           [:div {:class "columns"} [:div {:class "column"}]
+            [:div {:class "column has-text-centered"}
+             [:h1 {:class "title"} (str "Game On " playertype)]
+             [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board)]
+             [:div {:id "status"}]]
+            [:div {:class "column"}]]]]])))
 
 ;; Connection management
 
-(defn send-message [stream board]
+(defn send-message [stream board message]
   (try
     (doto stream
-      (.mergeFragments "<div id='status'>updating...</div>")
+      (.mergeFragments (str "<div id='status'>" message "</div>"))
       (.mergeFragments (render-to-string (board-to-fragment board))))
     true
-    (catch js/Error _e false)))
+    (catch js/Error _e  (let [_ (prn "error" _e)] false))))
 
 (defn broadcast [game-id]
   (let [board (get-in @all-streams [game-id :board])
+        streams (get-in @all-streams [game-id :streams])
         successful-streams (reduce (fn [acc stream]
-                                     (if (send-message stream board)
+                                     (if (send-message stream board "updating...")
                                        (conj acc stream)
                                        acc))
                                    #{}
-                                   (get-in @all-streams [game-id :streams]))]
+                                   streams)]
     (swap! all-streams assoc-in [game-id :streams] successful-streams)))
 
 (defn streamhandler [game-id stream]
   (add-stream game-id stream)
   (ensure-init-board game-id)
-  (broadcast game-id)
-  )
+  (broadcast game-id))
 
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
@@ -117,7 +115,6 @@
   (p/let [url (new js/URL req.url)
           path url.pathname
           params url.searchParams
-          url-game-id (.get params "game_id")
           url_cell_id (parse-long (or (.get params "cell_id") ""))
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
@@ -125,14 +122,13 @@
           playertype (get-signal signals "playertype")]
     (case path
       "/"
-      (new js/Response (render-to-string [:html headpart (eval welcomepage)]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html headpart welcomepage]) #js{:headers #js{:content-type "text/html"}})
       "/game"
+      (let [url-game-id (.get params "game_id")]
       (do (broadcast url-game-id)
-          (new js/Response (render-to-string [:html headpart (eval (gamepage url-game-id))]) #js{:headers #js{:content-type "text/html"}}))
+          (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}})))
       "/actions/toggle"
-      (let [_ (prn (str "cellid:" url_cell_id))
-            current-player (get-in @all-streams [game-id :player])]
-
+      (let [current-player (get-in @all-streams [game-id :player])]
         (when (= playertype current-player) (do
                                               (update-board game-id url_cell_id playertype)
                                               (toggle-player game-id)
