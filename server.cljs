@@ -1,7 +1,6 @@
 (ns server
   (:require ["npm:react"]
             ["npm:react-dom/server"]
-            [nbb.core :refer [await]]
             [clojure.string :as s]
             [reagent.dom.server :refer [render-to-string]]
             ["npm:datastar-sdk/web" :as d]
@@ -17,6 +16,8 @@
 
 (defn set-board [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
+
+(defn check-win [board] (if (every?  #(= % "X") board) "X" " "))
 
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
@@ -87,7 +88,7 @@
       (.mergeFragments (str "<div id='status'>" message "</div>"))
       (.mergeFragments (render-to-string (board-to-fragment board))))
     true
-    (catch js/Error _e  (let [_ (prn "error" _e)] false))))
+    (catch js/Error _e false)))
 
 (defn clean-stream [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])

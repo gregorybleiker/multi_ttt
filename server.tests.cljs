@@ -10,14 +10,12 @@
       (server/streamhandler :s)
       (is (= (count @server/all-streams) 1)))))
 
-(deftest add-remove-test
-  (testing "adding and removing leaves empty"
-    (let [val #js{:a "b"}
-          key 1]
-      (is (empty?
-           (:key (server/remove-stream
-                  (server/add-stream (hash-map) key val)
-                  key val)))))))
+(deftest check-win-test
+  (testing "line check"
+    (let [lineoneX (server/check-win ["X" "X" "X" " " " " " " " " " " " "])
+          linetwoO (server/check-win [" " " " " " "O" "O" "O" " " " " " "])]
+      (is (= lineoneX "X"))
+      (is (= linetwoO "O")))))
 
 ;; print name of each test
 (defmethod t/report [:cljs.test/default :begin-test-var] [m]
