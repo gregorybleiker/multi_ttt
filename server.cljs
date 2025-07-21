@@ -22,8 +22,11 @@
   (into [:div {:class "grid" :id "board"}]
         (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (get board x)])))
 
+(defn next-player [old-player]
+  (if (= "X" old-player) "O" "X"))
+
 (defn toggle-player [game-id]
-  (swap! all-streams (fn [state] (update-in state [game-id :player] (fn [old-player] (if (= "X" old-player) "O" "X"))))))
+  (swap! all-streams (fn [state] (update-in state [game-id :player] next-player))))
 
 (defn update-board [game-id cell-id v]
   (let [board (get-in @all-streams [game-id :board])
@@ -36,13 +39,10 @@
                            (update-in [game-id :board] (fnil identity (vec (repeat 9 " "))))
                            (update-in [game-id :player] (fnil identity "X"))))))
 
-(defn add-stream [game-id stream]
-  (let [_ (prn "adding stream" (to-js stream))]
+(defn add-stream [game-id playertype stream]
     (swap! all-streams (fn [state]
-                         (update-in state [game-id :streams] (fn [v] (if v (conj v stream) #{stream})))))))
+                         (assoc-in state [game-id :streams playertype] stream))))
 
-;; for lit
-;; see also https://github.com/starfederation/datastar/issues/356
 (def headpart
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/@starfederation/datastar@1.0.0-beta.11/dist/datastar.min.js"}]
@@ -62,12 +62,9 @@
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
 (defn gamepage [game-id]
-  (let [c (count (get-in @all-streams [game-id :streams]))
-        _ (prn "calling gamepage with " c)
-        playertype (case c
-                     0 "X"
-                     1 "O"
-                     "Full")
+  (let [playertype (if-not (get-in @all-streams [game-id :streams "X"]) "X"
+                           (if-not (get-in @all-streams [game-id :streams "O"]) "O"
+                                   "Full"))
         board (get-in @all-streams [game-id :board])]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body
@@ -92,20 +89,30 @@
     true
     (catch js/Error _e  (let [_ (prn "error" _e)] false))))
 
-(defn broadcast [game-id]
+(defn clean-streams [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])
-        streams (get-in @all-streams [game-id :streams])
+        streams (get-in @all-streams [game-id :streams playertype])
         successful-streams (reduce (fn [acc stream]
-                                     (if (send-message stream board "updating...")
+                                     (if (send-message stream board "cleaning")
                                        (conj acc stream)
                                        acc))
                                    #{}
                                    streams)]
-    (swap! all-streams assoc-in [game-id :streams] successful-streams)))
+    (swap! all-streams assoc-in [game-id :streams playertype] successful-streams)))
 
-(defn streamhandler [game-id stream]
-  (add-stream game-id stream)
+(defn broadcast [game-id]
+  (let [player (get-in @all-streams [game-id :player])
+        board (get-in @all-streams [game-id :board])
+        streamX (get-in @all-streams [game-id :streams "X"])
+        streamO (get-in @all-streams [game-id :streams "O"])
+        _ (prn streamX streamO)]
+    (doseq [s [streamX streamO]]
+    (send-message s board (str "waiting for " player)))))
+
+(defn streamhandler [game-id playertype stream]
   (ensure-init-board game-id)
+  (clean-streams game-id playertype)
+  (add-stream game-id playertype stream)
   (broadcast game-id))
 
 (defn get-signal [signals name]
@@ -125,18 +132,17 @@
       (new js/Response (render-to-string [:html headpart welcomepage]) #js{:headers #js{:content-type "text/html"}})
       "/game"
       (let [url-game-id (.get params "game_id")]
-      (do (broadcast url-game-id)
-          (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}})))
+          (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
       (let [current-player (get-in @all-streams [game-id :player])]
         (when (= playertype current-player) (do
                                               (update-board game-id url_cell_id playertype)
                                               (toggle-player game-id)
-                                              (broadcast game-id "updating...")))
+                                              (broadcast game-id)))
         (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
-               (partial streamhandler game-id)
+               (partial streamhandler game-id playertype)
                #js{:keepalive true})
       "/actions/redirect"
       (.stream d/ServerSentEventGenerator
