@@ -17,7 +17,23 @@
 (defn set-board [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
-(defn check-win [board] (if (every?  #(= % "X") board) "X" " "))
+;; winning validation
+(defn all-same [arr]
+  (when (apply = arr) (first arr)))
+
+(defn get-n [arr start n inc]
+  "gets `n` items from an array starting at `start` and skipping `inc` items"
+  (map arr (range start (+ start (* n inc)) inc)))
+
+(defn check-win [board] (let [firstrow (get-n board 0 3 1)
+                              secondrow (get-n board 3 3 1)
+                              thirdrow (get-n board 6 3 1)
+                              firstcolumn (get-n board 0 3 3)
+                              secondcolumn (get-n board 1 3 3)
+                              thirdcolumn (get-n board 2 3 3)
+                              firstdiag (get-n board 0 3 4)
+                              seconddiag (get-n board 2 3 2)]
+                          (first (keep identity (map all-same [firstrow secondrow thirdrow firstcolumn secondcolumn thirdcolumn firstdiag seconddiag])))))
 
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
@@ -37,12 +53,12 @@
 (defn ensure-init-board [game-id]
   (swap! all-streams (fn [state]
                        (-> state
-                           (update-in [game-id :board] (fnil identity (vec (repeat 9 " "))))
+                           (update-in [game-id :board] (fnil identity (vec (repeat 9 nil))))
                            (update-in [game-id :player] (fnil identity "X"))))))
 
 (defn add-stream [game-id playertype stream]
-    (swap! all-streams (fn [state]
-                         (assoc-in state [game-id :streams playertype] stream))))
+  (swap! all-streams (fn [state]
+                       (assoc-in state [game-id :streams playertype] stream))))
 
 (def headpart
   [:head
@@ -93,8 +109,8 @@
 (defn clean-stream [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])
         stream (get-in @all-streams [game-id :streams playertype])]
-        (when-not (send-message stream board "cleaning")
-    (swap! all-streams update-in [game-id :streams] dissoc playertype))))
+    (when-not (send-message stream board "cleaning")
+      (swap! all-streams update-in [game-id :streams] dissoc playertype))))
 
 (defn broadcast [game-id]
   (let [player (get-in @all-streams [game-id :player])
@@ -102,6 +118,12 @@
         streams (get-in @all-streams [game-id :streams])]
     (doseq [s streams]
       (send-message (second s) board (str "waiting for " player)))))
+
+(defn end-game [game-id winner]
+  (let [board (get-in @all-streams [game-id :board])
+        streams (get-in @all-streams [game-id :streams])]
+    (doseq [s streams]
+      (send-message (second s) board (str winner " wins the game")))))
 
 (defn streamhandler [game-id playertype stream]
   (ensure-init-board game-id)
@@ -126,14 +148,19 @@
       (new js/Response (render-to-string [:html headpart welcomepage]) #js{:headers #js{:content-type "text/html"}})
       "/game"
       (let [url-game-id (.get params "game_id")]
-          (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
+        (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (let [current-player (get-in @all-streams [game-id :player])]
-        (when (= playertype current-player) (do
-                                              (update-board game-id url_cell_id playertype)
-                                              (toggle-player game-id)
-                                              (broadcast game-id)))
-        (new js/Response))
+      (let [_ (prn "toggle")
+            board (get-in @all-streams [game-id :board])]
+        (if-let [winner (check-win board)]
+          (end-game game-id winner)
+          (let [current-player (get-in @all-streams [game-id :player])
+                _ (prn "hello")]
+            (when (= playertype current-player) (do
+                                                  (update-board game-id url_cell_id playertype)
+                                                  (toggle-player game-id)
+                                                  (broadcast game-id)))))
+            (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler game-id playertype)

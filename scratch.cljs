@@ -48,3 +48,25 @@
 d
 
 (def ar [1 2 3])
+
+
+(defn all-same [arr]
+  (when (apply = arr) (first arr)))
+
+;  if (empty? arr) true (let [startitem (first arr)]
+;                          (when (every? #(= % startitem) arr) startitem ))))
+  (comment
+    (all-same [1 1 2])
+    (all-same ["a" "a" "a"])
+    )
+
+(defn get-n [arr start n inc]
+  "gets `n` items from an array starting at `start` and skipping `inc` items"
+  (map arr (range start (+ start (* n inc)) inc)))
+
+(comment
+  (let [testarray [0 1 2 3 4 5 6 7 8]]
+    (get-n testarray 2 3 2
+           ))
+
+  )
