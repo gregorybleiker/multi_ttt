@@ -26,9 +26,15 @@
                                 combinations (into [] (map #(map board %) ['(0 1 2) '(3 4 5) '(6 7 8) '(0 3 6) '(1 4 7) '(2 5 8) '(0 4 8) '(2 4 6)]))]
                             (first (keep identity (map all-same combinations)))))
 
-(defn board-to-fragment [board]
+(defn board-to-fragment [board winner]
   (into [:div {:class "grid" :id "board"}]
-        (for [x (range 0 9)] [:div {:class "cell is-flex is-align-items-center is-justify-content-center is-size-1" :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} (get board x)])))
+        (for [x (range 0 9)]
+          (let [value (get board x)
+                normalclass "cell is-flex is-align-items-center is-justify-content-center is-size-1"
+                winnerclass (if (and (= winner "X") (= value "X")) "is-underlined"
+                                (if (and (= winner "O") (= value "O")) "is-underlined" ""))
+                classes (str normalclass winnerclass)]
+            [:div {:class classes :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} value]))))
 
 (defn next-player [old-player]
   (if (= "X" old-player) "O" "X"))
@@ -87,34 +93,38 @@
              [:div {:id "status"}]]
             [:div {:class "column"}]]]]])))
 
+(defn status-message [text] (str "<div id='status'>" text "</div>"))
+(defn board-message [board] (render-to-string (board-to-fragment board nil)))
+(defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
+
 ;; Connection management
 
-(defn send-message [stream board message]
+(defn send-message [stream message]
   (try
-    (doto stream
-      (.mergeFragments (str "<div id='status'>" message "</div>"))
-      (.mergeFragments (render-to-string (board-to-fragment board))))
+    (.mergeFragments stream message)
     true
     (catch js/Error _e false)))
 
 (defn clean-stream [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])
         stream (get-in @all-streams [game-id :streams playertype])]
-    (when-not (send-message stream board "cleaning")
+    (when-not (send-message stream (status-message  "cleaning"))
       (swap! all-streams update-in [game-id :streams] dissoc playertype))))
 
 (defn broadcast [game-id]
   (let [player (get-in @all-streams [game-id :player])
         board (get-in @all-streams [game-id :board])
         streams (get-in @all-streams [game-id :streams])]
-    (doseq [s streams]
-      (send-message (second s) board (str "waiting for " player)))))
+    (doseq [s (map second streams)]
+      (send-message s (status-message (str "waiting for " player)))
+      (send-message s (board-message board)))))
 
 (defn end-game [game-id winner]
   (let [board (get-in @all-streams [game-id :board])
         streams (get-in @all-streams [game-id :streams])]
-    (doseq [s streams]
-      (send-message (second s) board (str winner " wins the game")))))
+    (doseq [s (map second streams)]
+      (send-message s (status-message (str winner " wins the game")))
+      (send-message s (game-end-message board winner)))))
 
 (defn streamhandler [game-id playertype stream]
   (ensure-init-board game-id)
