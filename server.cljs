@@ -25,15 +25,16 @@
   "gets `n` items from an array starting at `start` and skipping `inc` items"
   (map arr (range start (+ start (* n inc)) inc)))
 
-(defn check-win [board] (let [firstrow (get-n board 0 3 1)
-                              secondrow (get-n board 3 3 1)
-                              thirdrow (get-n board 6 3 1)
-                              firstcolumn (get-n board 0 3 3)
-                              secondcolumn (get-n board 1 3 3)
-                              thirdcolumn (get-n board 2 3 3)
-                              firstdiag (get-n board 0 3 4)
-                              seconddiag (get-n board 2 3 2)]
-                          (first (keep identity (map all-same [firstrow secondrow thirdrow firstcolumn secondcolumn thirdcolumn firstdiag seconddiag])))))
+(defn check-win [game-id] (let [board (get-in @all-streams [game-id :board])
+                                firstrow (get-n board 0 3 1)
+                                secondrow (get-n board 3 3 1)
+                                thirdrow (get-n board 6 3 1)
+                                firstcolumn (get-n board 0 3 3)
+                                secondcolumn (get-n board 1 3 3)
+                                thirdcolumn (get-n board 2 3 3)
+                                firstdiag (get-n board 0 3 4)
+                                seconddiag (get-n board 2 3 2)]
+                            (first (keep identity (map all-same [firstrow secondrow thirdrow firstcolumn secondcolumn thirdcolumn firstdiag seconddiag])))))
 
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
@@ -150,17 +151,15 @@
       (let [url-game-id (.get params "game_id")]
         (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (let [_ (prn "toggle")
-            board (get-in @all-streams [game-id :board])]
-        (if-let [winner (check-win board)]
+      (do
+        (update-board game-id url_cell_id playertype)
+        (if-let [winner (check-win game-id)]
           (end-game game-id winner)
-          (let [current-player (get-in @all-streams [game-id :player])
-                _ (prn "hello")]
+          (let [current-player (get-in @all-streams [game-id :player])]
             (when (= playertype current-player) (do
-                                                  (update-board game-id url_cell_id playertype)
                                                   (toggle-player game-id)
                                                   (broadcast game-id)))))
-            (new js/Response))
+        (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial streamhandler game-id playertype)
