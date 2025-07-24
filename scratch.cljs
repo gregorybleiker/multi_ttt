@@ -56,8 +56,9 @@ d
 ;  if (empty? arr) true (let [startitem (first arr)]
 ;                          (when (every? #(= % startitem) arr) startitem ))))
   (comment
-    (all-same [1 1 2])
-    (all-same ["a" "a" "a"])
+    (all-same [1 1 2] )
+    (all-same '("a" "a" "a")
+              )
     )
 
 (defn get-n [arr start n inc]
@@ -65,8 +66,7 @@ d
   (map arr (range start (+ start (* n inc)) inc)))
 
 (comment
-  (let [testarray [0 1 2 3 4 5 6 7 8]]
-    (get-n testarray 2 3 2
-           ))
-
+  (let [testarray [0 1 2 3 4 "a" 6 7 8]]
+    (into [] (map #(map testarray %) ['(1 5 3) '(5 2 1)])))
   )
+(apply = '("a" "a"))

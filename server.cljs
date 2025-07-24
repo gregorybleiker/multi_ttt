@@ -21,20 +21,10 @@
 (defn all-same [arr]
   (when (apply = arr) (first arr)))
 
-(defn get-n [arr start n inc]
-  "gets `n` items from an array starting at `start` and skipping `inc` items"
-  (map arr (range start (+ start (* n inc)) inc)))
-
 (defn check-win [game-id] (let [board (get-in @all-streams [game-id :board])
-                                firstrow (get-n board 0 3 1)
-                                secondrow (get-n board 3 3 1)
-                                thirdrow (get-n board 6 3 1)
-                                firstcolumn (get-n board 0 3 3)
-                                secondcolumn (get-n board 1 3 3)
-                                thirdcolumn (get-n board 2 3 3)
-                                firstdiag (get-n board 0 3 4)
-                                seconddiag (get-n board 2 3 2)]
-                            (first (keep identity (map all-same [firstrow secondrow thirdrow firstcolumn secondcolumn thirdcolumn firstdiag seconddiag])))))
+                                ;; combinations are the subsets of the board which are 3 in a row for tic tac toe
+                                combinations (into [] (map #(map board %) ['(0 1 2) '(3 4 5) '(6 7 8) '(0 3 6) '(1 4 7) '(2 5 8) '(0 4 8) '(2 4 6)]))]
+                            (first (keep identity (map all-same combinations)))))
 
 (defn board-to-fragment [board]
   (into [:div {:class "grid" :id "board"}]
