@@ -90,12 +90,14 @@
             [:div {:class "column has-text-centered"}
              [:h1 {:class "title"} (str "Game On " playertype)]
              [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board nil)]
-             [:div {:id "status"}]]
+             [:div {:id "status"}]
+             [:div {:id "endedbutton"}]]
             [:div {:class "column"}]]]]])))
 
 (defn status-message [text] (str "<div id='status'>" text "</div>"))
 (defn board-message [board] (render-to-string (board-to-fragment board nil)))
 (defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
+(def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
 
 ;; Connection management
 
@@ -124,7 +126,9 @@
         streams (get-in @all-streams [game-id :streams])]
     (doseq [s (map second streams)]
       (send-message s (status-message (str winner " wins the game")))
-      (send-message s (game-end-message board winner)))))
+      (send-message s (game-end-message board winner))
+      (send-message s end-button))
+    (swap! all-streams dissoc game-id)))
 
 (defn streamhandler [game-id playertype stream]
   (ensure-init-board game-id)
@@ -151,12 +155,12 @@
       (let [url-game-id (.get params "game_id")]
         (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (do
-        (update-board game-id url_cell_id playertype)
-        (if-let [winner (check-win game-id)]
-          (end-game game-id winner)
-          (let [current-player (get-in @all-streams [game-id :player])]
-            (when (= playertype current-player) (do
+      (let [current-player (get-in @all-streams [game-id :player])]
+        (when (= playertype current-player) (do
+                                              (update-board game-id url_cell_id playertype)
+                                              (if-let [winner (check-win game-id)]
+                                                (end-game game-id winner)
+                                                (do
                                                   (toggle-player game-id)
                                                   (broadcast game-id)))))
         (new js/Response))
@@ -166,8 +170,7 @@
                #js{:keepalive true})
       "/actions/redirect"
       (let [url_url (.get params "url")
-            redirect_command (str "setTimeout(() => window.location = '" url_url "')")
-            _ (prn redirect_command)]
+            redirect_command (str "setTimeout(() => window.location = '" url_url "')")]
         (.stream d/ServerSentEventGenerator
                  (fn [stream] (.executeScript stream redirect_command)
                    #js{:keepalive true})))
