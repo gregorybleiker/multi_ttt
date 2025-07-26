@@ -72,7 +72,7 @@
       [:input {:data-bind "game_id"}]]
      [:div {:class "block"}
       [:button {:class "button" :data-show "$game_id != ''"
-                :data-on-click "@get('/actions/redirect')"}
+                :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
 (defn gamepage [game-id]
@@ -89,7 +89,7 @@
            [:div {:class "columns"} [:div {:class "column"}]
             [:div {:class "column has-text-centered"}
              [:h1 {:class "title"} (str "Game On " playertype)]
-             [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board)]
+             [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board nil)]
              [:div {:id "status"}]]
             [:div {:class "column"}]]]]])))
 
@@ -165,9 +165,12 @@
                (partial streamhandler game-id playertype)
                #js{:keepalive true})
       "/actions/redirect"
-      (.stream d/ServerSentEventGenerator
-               (fn [stream] (.executeScript stream (str "setTimeout(() => window.location = '/game?game_id=" (s/upper-case  game-id)  "')")))
-               #js{:keepalive true})
+      (let [url_url (.get params "url")
+            redirect_command (str "setTimeout(() => window.location = '" url_url "')")
+            _ (prn redirect_command)]
+        (.stream d/ServerSentEventGenerator
+                 (fn [stream] (.executeScript stream redirect_command)
+                   #js{:keepalive true})))
       (new js/Response "nope"))))
 
 ;; Server
