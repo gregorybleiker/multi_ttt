@@ -12,24 +12,24 @@
   all-streams
   (atom (hash-map)))
 
-(defn set-board [game-id board]
+(defn set-board! [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
-(defn update-board [game-id cell-id v]
+(defn update-board! [game-id cell-id v]
   (let [board (get-in @all-streams [game-id :board])
         new-board (assoc board cell-id v)]
-    (set-board game-id new-board)))
+    (set-board! game-id new-board)))
 
-(defn toggle-player [game-id]
+(defn toggle-player! [game-id]
   (swap! all-streams (fn [state] (update-in state [game-id :player] #(if (= "X" %) "O" "X")))))
 
-(defn ensure-init-board [game-id]
+(defn ensure-init-board! [game-id]
   (swap! all-streams (fn [state]
                        (-> state
                            (update-in [game-id :board] (fnil identity (vec (repeat 9 nil))))
                            (update-in [game-id :player] (fnil identity "X"))))))
 
-(defn add-stream [game-id playertype stream]
+(defn add-stream! [game-id playertype stream]
   (swap! all-streams (fn [state]
                        (assoc-in state [game-id :streams playertype] stream))))
 
@@ -103,7 +103,9 @@
     true
     (catch js/Error _e false)))
 
-(defn clean-stream [game-id playertype]
+(defn clean-stream!
+  "tries to send a message. If unsuccessful, removes stream from state"
+  [game-id playertype]
   (let [board (get-in @all-streams [game-id :board])
         stream (get-in @all-streams [game-id :streams playertype])]
     (when-not (send-message stream (status-message  "cleaning"))
@@ -117,7 +119,7 @@
       (send-message s (status-message (str "waiting for " player)))
       (send-message s (board-message board)))))
 
-(defn end-game [game-id winner]
+(defn end-game! [game-id winner]
   (let [board (get-in @all-streams [game-id :board])
         streams (get-in @all-streams [game-id :streams])]
     (doseq [s (map second streams)]
@@ -127,9 +129,9 @@
     (swap! all-streams dissoc game-id)))
 
 (defn streamhandler [game-id playertype stream]
-  (ensure-init-board game-id)
-  (clean-stream game-id playertype)
-  (add-stream game-id playertype stream)
+  (ensure-init-board! game-id)
+  (clean-stream! game-id playertype)
+  (add-stream! game-id playertype stream)
   (broadcast game-id))
 
 (defn get-signal [signals name]
@@ -153,11 +155,11 @@
       "/actions/toggle"
       (let [current-player (get-in @all-streams [game-id :player])]
         (when (= playertype current-player)
-          (update-board game-id url_cell_id playertype)
+          (update-board! game-id url_cell_id playertype)
           (if-let [winner (check-win game-id)]
-            (end-game game-id winner)
+            (end-game! game-id winner)
             (do
-              (toggle-player game-id)
+              (toggle-player! game-id)
               (broadcast game-id))))
         (new js/Response))
       "/actions/connect"
@@ -179,6 +181,7 @@
 (defn start-server []
   (set! the-server (js/Deno.serve routefn)))
 
+;; these are for the repl
 (defn stop-server [] (.shutdown the-server))
 
 (defn restart []
