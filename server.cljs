@@ -141,7 +141,6 @@
   (p/let [url (new js/URL req.url)
           path url.pathname
           params url.searchParams
-          url_cell_id (parse-long (or (.get params "cell_id") ""))
           signals (.readSignals d/ServerSentEventGenerator req)
           board (get-signal signals "board")
           game-id (get-signal signals "game_id")
@@ -153,7 +152,8 @@
       (let [url-game-id (.get params "game_id")]
         (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (let [current-player (get-in @all-streams [game-id :player])]
+      (let [current-player (get-in @all-streams [game-id :player])
+            url_cell_id (parse-long (or (.get params "cell_id") ""))]
         (when (= playertype current-player)
           (update-board! game-id url_cell_id playertype)
           (if-let [winner (check-win game-id)]
@@ -168,8 +168,7 @@
                #js{:keepalive true})
       "/actions/redirect"
       (let [url_url (.get params "url")
-            redirect_command (str "setTimeout(() => window.location = '" url_url "')")
-            _ (prn url_url)]
+            redirect_command (str "setTimeout(() => window.location = '" url_url "')")]
         (.stream d/ServerSentEventGenerator
                  (fn [stream] (.executeScript stream redirect_command)
                    #js{:keepalive true})))
