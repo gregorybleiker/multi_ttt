@@ -40,7 +40,7 @@
 (defn check-win [b]
 ;; combinations are the subsets of the board which are 3 in a row for tic tac toe
   (let [combinations (into [] (map #(map b %) ['(0 1 2) '(3 4 5) '(6 7 8) '(0 3 6) '(1 4 7) '(2 5 8) '(0 4 8) '(2 4 6)]))]
-   (first (keep identity (map all-same combinations)))))
+    (first (keep identity (map all-same combinations)))))
 
 ;; frontend related
 (defn to-js [s] (js/JSON.stringify (clj->js s)))
@@ -51,7 +51,7 @@
                 normalclass "cell is-flex is-align-items-center is-justify-content-center is-size-1"
                 winnerclass (if (and (= winner "X") (= value "X")) "is-underlined"
                                 (if (and (= winner "O") (= value "O")) "is-underlined" ""))
-                classes (str normalclass winnerclass)]
+                classes (str normalclass " " winnerclass)]
             [:div {:class classes :style {:border "1px solid" :aspect-ratio "1"} :id (str "cell-" x) :data-on-click (str "@get('/actions/toggle?cell_id=" x "')")} value]))))
 
 (defn status-message [text] (str "<div id='status'>" text "</div>"))
@@ -59,12 +59,12 @@
 (defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
 (def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
 
-(def headpart
+(def head-part
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js"}]
    [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]])
 
-(def welcomepage
+(def welcome-page
   [:body
    [:div  {:data-signals "{game_id: ''}"}]
    [:section {:class "section"}
@@ -77,7 +77,7 @@
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
-(defn gamepage [game-id]
+(defn game-page [game-id]
   (let [playertype (if-not (get-in @all-streams [game-id :streams "X"]) "X"
                            (if-not (get-in @all-streams [game-id :streams "O"]) "O"
                                    "Full"))
@@ -128,7 +128,7 @@
       (send-message s end-button))
     (swap! all-streams dissoc game-id)))
 
-(defn streamhandler [game-id playertype stream]
+(defn stream-handler [game-id playertype stream]
   (ensure-init-board! game-id)
   (clean-stream! game-id playertype)
   (add-stream! game-id playertype stream)
@@ -137,7 +137,7 @@
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
 
-(defn routefn [req]
+(defn routes [req]
   (p/let [url (new js/URL req.url)
           path url.pathname
           params url.searchParams
@@ -147,25 +147,26 @@
           playertype (get-signal signals "playertype")]
     (case path
       "/"
-      (new js/Response (render-to-string [:html headpart welcomepage]) #js{:headers #js{:content-type "text/html"}})
+      (new js/Response (render-to-string [:html head-part welcome-page]) #js{:headers #js{:content-type "text/html"}})
       "/game"
       (let [url-game-id (.get params "game_id")]
-        (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
+        (new js/Response (render-to-string [:html head-part (game-page url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
       (let [current-player (get-in @all-streams [game-id :player])
-            url_cell_id (parse-long (or (.get params "cell_id") ""))
-            board (get-in @all-streams [game-id :board])]
+            url_cell_id (parse-long (or (.get params "cell_id") ""))]
         (when (= playertype current-player)
           (update-board! game-id url_cell_id playertype)
-          (if-let [winner (check-win board)]
-            (end-game! game-id winner)
-            (do
-              (toggle-player! game-id)
-              (broadcast game-id))))
-        (new js/Response))
+          (let [board (get-in @all-streams [game-id :board])
+                winner (check-win board)]
+            (if winner
+              (end-game! game-id winner)
+              (do
+                (toggle-player! game-id)
+                (broadcast game-id))))
+          (new js/Response)))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
-               (partial streamhandler game-id playertype)
+               (partial stream-handler game-id playertype)
                #js{:keepalive true})
       "/actions/redirect"
       (let [url_url (.get params "url")
@@ -179,7 +180,7 @@
 (defonce the-server nil)
 
 (defn start-server []
-  (set! the-server (js/Deno.serve routefn)))
+  (set! the-server (js/Deno.serve routes)))
 
 ;; these are for the repl
 (defn stop-server [] (.shutdown the-server))
