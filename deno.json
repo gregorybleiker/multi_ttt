@@ -1,7 +1,7 @@
 {
     "tasks": {
         "server": "deno run -A jsr:@babashka/nbb -x server/start-server",
-        "dev": "deno run -A jsr:@babashka/nbb main.cljs",
+        "test": "deno run -A jsr:@babashka/nbb -x tests/run-tests",
         "nrepl": "deno run -A --unstable-node-globals jsr:@babashka/nbb nrepl-server :port 1234"
     }
 }

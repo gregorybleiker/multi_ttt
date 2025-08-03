@@ -37,10 +37,10 @@
 (defn all-same [arr]
   (when (apply = arr) (first arr)))
 
-(defn check-win [game-id] (let [board (get-in @all-streams [game-id :board])
-                                ;; combinations are the subsets of the board which are 3 in a row for tic tac toe
-                                combinations (into [] (map #(map board %) ['(0 1 2) '(3 4 5) '(6 7 8) '(0 3 6) '(1 4 7) '(2 5 8) '(0 4 8) '(2 4 6)]))]
-                            (first (keep identity (map all-same combinations)))))
+(defn check-win [b]
+;; combinations are the subsets of the board which are 3 in a row for tic tac toe
+  (let [combinations (into [] (map #(map b %) ['(0 1 2) '(3 4 5) '(6 7 8) '(0 3 6) '(1 4 7) '(2 5 8) '(0 4 8) '(2 4 6)]))]
+   (first (keep identity (map all-same combinations)))))
 
 ;; frontend related
 (defn to-js [s] (js/JSON.stringify (clj->js s)))
@@ -153,10 +153,11 @@
         (new js/Response (render-to-string [:html headpart (gamepage url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
       (let [current-player (get-in @all-streams [game-id :player])
-            url_cell_id (parse-long (or (.get params "cell_id") ""))]
+            url_cell_id (parse-long (or (.get params "cell_id") ""))
+            board (get-in @all-streams [game-id :board])]
         (when (= playertype current-player)
           (update-board! game-id url_cell_id playertype)
-          (if-let [winner (check-win game-id)]
+          (if-let [winner (check-win board)]
             (end-game! game-id winner)
             (do
               (toggle-player! game-id)
