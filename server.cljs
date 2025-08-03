@@ -106,8 +106,7 @@
 (defn clean-stream!
   "tries to send a message. If unsuccessful, removes stream from state"
   [game-id playertype]
-  (let [board (get-in @all-streams [game-id :board])
-        stream (get-in @all-streams [game-id :streams playertype])]
+  (let [stream (get-in @all-streams [game-id :streams playertype])]
     (when-not (send-message stream (status-message  "cleaning"))
       (swap! all-streams update-in [game-id :streams] dissoc playertype))))
 
