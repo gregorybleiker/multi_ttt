@@ -1,0 +1,16 @@
+{
+  "version": "4",
+  "specifiers": {
+    "npm:react@^19.1.1": "19.1.1"
+  },
+  "npm": {
+    "react@19.1.1": {
+      "integrity": "sha512-w8nqGImo45dmMIfljjMwOGtbmC/mk4CMYhWIicdSflH91J9TyCyczcPFXJzrZ/ZXcgGRFeP6BU0BEJTw6tZdfQ=="
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:react@^19.1.1"
+    ]
+  }
+}

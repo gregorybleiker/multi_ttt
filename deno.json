@@ -3,5 +3,8 @@
         "server": "deno run -A jsr:@babashka/nbb -x server/start-server",
         "test": "deno run -A jsr:@babashka/nbb -x tests/run-tests",
         "nrepl": "deno run -A --unstable-node-globals jsr:@babashka/nbb nrepl-server :port 1234"
+    },
+    "imports": {
+        "react": "npm:react@^19.1.1"
     }
 }
