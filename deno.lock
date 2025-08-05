@@ -1,7 +1,9 @@
 {
   "version": "4",
   "specifiers": {
+    "jsr:@babashka/nbb@*": "1.3.204",
     "jsr:@babashka/nbb@^1.3.204": "1.3.204",
+    "npm:@starfederation/datastar-sdk@^1.0.0-RC.1": "1.0.0-RC.1",
     "npm:import-meta-resolve@^4.1.0": "4.1.0",
     "npm:react-dom@^19.1.1": "19.1.1_react@19.1.1",
     "npm:react@^19.1.1": "19.1.1"
@@ -15,6 +17,9 @@
     }
   },
   "npm": {
+    "@starfederation/datastar-sdk@1.0.0-RC.1": {
+      "integrity": "sha512-IaFqEeTxfFguPm5QFPCrg4mQx7BT5P5LIVPR+XMKztY/rtH/iW9K/D2A3BlEx7WD75ukKlfoLfuaqXlj7GB9/A=="
+    },
     "import-meta-resolve@4.1.0": {
       "integrity": "sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw=="
     },
@@ -38,6 +43,7 @@
   "workspace": {
     "dependencies": [
       "jsr:@babashka/nbb@^1.3.204",
+      "npm:@starfederation/datastar-sdk@^1.0.0-RC.1",
       "npm:react-dom@^19.1.1",
       "npm:react@^19.1.1"
     ]
