@@ -5,6 +5,7 @@
         "nrepl": "deno run -A --unstable-node-globals jsr:@babashka/nbb nrepl-server :port 1234"
     },
     "imports": {
+        "@babashka/nbb": "jsr:@babashka/nbb@^1.3.204",
         "react": "npm:react@^19.1.1",
         "react-dom": "npm:react-dom@^19.1.1"
     }
