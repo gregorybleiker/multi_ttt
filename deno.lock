@@ -32,6 +32,9 @@
       "integrity": "sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA=="
     }
   },
+  "remote": {
+    "https://registry.npmjs.org/@starfederation%2fdatastar-sdk": "b1c8969394b61bac663fc42fb494466eae18da635c0f13894ca3bebcf27ba165"
+  },
   "workspace": {
     "dependencies": [
       "jsr:@babashka/nbb@^1.3.204",
