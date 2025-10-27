@@ -1,37 +1,12 @@
-(ns server
+(ns multittt.server
   (:require ["npm:react"]
             ["npm:react-dom/server"]
             [reagent.dom.server :refer [render-to-string]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [promesa.core :as p]
-            [applied-science.js-interop :as j]))
+            [applied-science.js-interop :as j]
+            [multittt.state :as state]))
 
-;; game state
-(def
-  ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
-  all-streams
-  (atom (hash-map)))
-
-(defn set-board! [game-id board]
-  (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
-
-(defn update-board! [game-id cell-id v]
-  (let [board (get-in @all-streams [game-id :board])
-        new-board (assoc board cell-id v)]
-    (set-board! game-id new-board)))
-
-(defn toggle-player! [game-id]
-  (swap! all-streams (fn [state] (update-in state [game-id :player] #(if (= "X" %) "O" "X")))))
-
-(defn ensure-init-board! [game-id]
-  (swap! all-streams (fn [state]
-                       (-> state
-                           (update-in [game-id :board] (fnil identity (vec (repeat 9 nil))))
-                           (update-in [game-id :player] (fnil identity "X"))))))
-
-(defn add-stream! [game-id playertype stream]
-  (swap! all-streams (fn [state]
-                       (assoc-in state [game-id :streams playertype] stream))))
 
 ;; gameplay validation
 (defn all-same [arr]
@@ -78,10 +53,10 @@
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
 (defn game-page [game-id]
-  (let [playertype (if-not (get-in @all-streams [game-id :streams "X"]) "X"
-                           (if-not (get-in @all-streams [game-id :streams "O"]) "O"
+  (let [playertype (if-not (get-in @state/all-streams [game-id :streams "X"]) "X"
+                           (if-not (get-in @state/all-streams [game-id :streams "O"]) "O"
                                    "Full"))
-        board (get-in @all-streams [game-id :board])]
+        board (get-in @state/all-streams [game-id :board])]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body
          [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " (to-js playertype) ", board:'[]'}")}]
@@ -106,31 +81,31 @@
 (defn clean-stream!
   "tries to send a message. If unsuccessful, removes stream from state"
   [game-id playertype]
-  (let [stream (get-in @all-streams [game-id :streams playertype])]
+  (let [stream (get-in @state/all-streams [game-id :streams playertype])]
     (when-not (send-message stream (status-message  "cleaning"))
-      (swap! all-streams update-in [game-id :streams] dissoc playertype))))
+      (swap! state/all-streams update-in [game-id :streams] dissoc playertype))))
 
 (defn broadcast [game-id]
-  (let [player (get-in @all-streams [game-id :player])
-        board (get-in @all-streams [game-id :board])
-        streams (get-in @all-streams [game-id :streams])]
+  (let [player (get-in @state/all-streams [game-id :player])
+        board (get-in @state/all-streams [game-id :board])
+        streams (get-in @state/all-streams [game-id :streams])]
     (doseq [s (map second streams)]
       (send-message s (status-message (str "waiting for " player)))
       (send-message s (board-message board)))))
 
 (defn end-game! [game-id winner]
-  (let [board (get-in @all-streams [game-id :board])
-        streams (get-in @all-streams [game-id :streams])]
+  (let [board (get-in @state/all-streams [game-id :board])
+        streams (get-in @state/all-streams [game-id :streams])]
     (doseq [s (map second streams)]
       (send-message s (status-message (str winner " wins the game")))
       (send-message s (game-end-message board winner))
       (send-message s end-button))
-    (swap! all-streams dissoc game-id)))
+    (swap! state/all-streams dissoc game-id)))
 
 (defn stream-handler [game-id playertype stream]
-  (ensure-init-board! game-id)
+  (state/ensure-init-board! game-id)
   (clean-stream! game-id playertype)
-  (add-stream! game-id playertype stream)
+  (state/add-stream! game-id playertype stream)
   (broadcast game-id))
 
 (defn get-signal [signals name]
@@ -151,18 +126,18 @@
       (let [url-game-id (.get params "game_id")]
         (new js/Response (render-to-string [:html head-part (game-page url-game-id)]) #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
-      (let [current-player (get-in @all-streams [game-id :player])
+      (let [current-player (get-in @state/all-streams [game-id :player])
             url_cell_id (parse-long (or (.get params "cell_id") ""))]
         (when (= playertype current-player)
-          (update-board! game-id url_cell_id playertype)
-          (let [board (get-in @all-streams [game-id :board])
+          (state/update-board! game-id url_cell_id playertype)
+          (let [board (get-in @state/all-streams [game-id :board])
                 winner (check-win board)]
             (if winner
               (end-game! game-id winner)
               (do
-                (toggle-player! game-id)
+                (state/toggle-player! game-id)
                 (broadcast game-id))))
-          (new js/Response)))
+          (new js/Respose)))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial stream-handler game-id playertype)
@@ -186,8 +161,10 @@
 
 (defn restart []
   (p/do!
-   (reset! all-streams (hash-map))
+   (reset! state/all-streams (hash-map))
    (stop-server)
    (start-server)
    ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
    (prn "restarted")))
+
+(defn -main [] (p/do! (start-server)))
