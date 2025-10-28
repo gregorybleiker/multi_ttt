@@ -1,5 +1,6 @@
 (ns multittt.state
-)
+(:require [multittt.stream :as stream]))
+
 (def
   ^{:doc "a map with the id as key and a collection of streams that subscribe to this key"}
   all-streams
@@ -26,3 +27,18 @@
   (swap! all-streams (fn [state]
                        (assoc-in state [game-id :streams playertype] stream))))
 
+(defn clean-stream!
+  "tries to send a message. If unsuccessful, removes stream from state"
+  [game-id playertype]
+  (let [stream (get-in @all-streams [game-id :streams playertype])]
+    (when-not (stream/send-message stream (status-message  "cleaning"))
+      (swap! all-streams update-in [game-id :streams] dissoc playertype))))
+
+(defn end-game! [game-id winner]
+  (let [board (get-in @state/all-streams [game-id :board])
+        streams (get-in @state/all-streams [game-id :streams])]
+    (doseq [s (map second streams)]
+      (stream/send-message s (status-message (str winner " wins the game")))
+      (stream/send-message s (game-end-message board winner))
+      (stream/send-message s end-button))
+    (swap! all-streams dissoc game-id)))

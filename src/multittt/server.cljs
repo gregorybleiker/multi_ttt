@@ -5,7 +5,8 @@
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [promesa.core :as p]
             [applied-science.js-interop :as j]
-            [multittt.state :as state]))
+            [multittt.state :as state]
+            [multittt.stream :as stream]))
 
 
 ;; gameplay validation
@@ -72,41 +73,13 @@
             [:div {:class "column"}]]]]])))
 
 ;; Connection management
-(defn send-message [stream message]
-  (try
-    (.patchElements stream message)
-    true
-    (catch js/Error _e false)))
-
-(defn clean-stream!
-  "tries to send a message. If unsuccessful, removes stream from state"
-  [game-id playertype]
-  (let [stream (get-in @state/all-streams [game-id :streams playertype])]
-    (when-not (send-message stream (status-message  "cleaning"))
-      (swap! state/all-streams update-in [game-id :streams] dissoc playertype))))
-
-(defn broadcast [game-id]
-  (let [player (get-in @state/all-streams [game-id :player])
-        board (get-in @state/all-streams [game-id :board])
-        streams (get-in @state/all-streams [game-id :streams])]
-    (doseq [s (map second streams)]
-      (send-message s (status-message (str "waiting for " player)))
-      (send-message s (board-message board)))))
-
-(defn end-game! [game-id winner]
-  (let [board (get-in @state/all-streams [game-id :board])
-        streams (get-in @state/all-streams [game-id :streams])]
-    (doseq [s (map second streams)]
-      (send-message s (status-message (str winner " wins the game")))
-      (send-message s (game-end-message board winner))
-      (send-message s end-button))
-    (swap! state/all-streams dissoc game-id)))
+;
 
 (defn stream-handler [game-id playertype stream]
   (state/ensure-init-board! game-id)
-  (clean-stream! game-id playertype)
+  (stream/clean-stream! game-id playertype)
   (state/add-stream! game-id playertype stream)
-  (broadcast game-id))
+  (stream/broadcast game-id))
 
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
