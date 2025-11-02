@@ -1,1 +1,1 @@
-deno -A jsr:@babashka/nbb -m --classpath src  multittt.state
+  deno -A jsr:@babashka/nbb -m --classpath src multittt.state

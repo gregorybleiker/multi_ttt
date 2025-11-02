@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test('test', async ({ page, context }) => {
+test('play a complete game', async ({ page, context }) => {
   let page2 = await context.newPage();
   await page.goto('http://localhost:8000/');
   await page2.goto('http://localhost:8000/');

@@ -77,9 +77,9 @@
 
 (defn stream-handler [game-id playertype stream]
   (state/ensure-init-board! game-id)
-  (stream/clean-stream! game-id playertype)
+  (state/clean-stream! game-id status-message playertype)
   (state/add-stream! game-id playertype stream)
-  (stream/broadcast game-id))
+  (stream/broadcast @state/all-streams status-message board-message game-id))
 
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
@@ -106,10 +106,10 @@
           (let [board (get-in @state/all-streams [game-id :board])
                 winner (check-win board)]
             (if winner
-              (end-game! game-id winner)
+              (state/end-game! status-message game-end-message end-button game-id winner)
               (do
                 (state/toggle-player! game-id)
-                (broadcast game-id))))
+                (stream/broadcast game-id))))
           (new js/Respose)))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
