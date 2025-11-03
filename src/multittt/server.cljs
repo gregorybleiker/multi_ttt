@@ -1,6 +1,7 @@
 (ns multittt.server
   (:require ["npm:react"]
             ["npm:react-dom/server"]
+            ["npm:express" :as express]
             [reagent.dom.server :refer [render-to-string]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [promesa.core :as p]
@@ -104,7 +105,7 @@
           (let [board (get-in @state/all-streams [game-id :board])
                 winner (check-win board)]
             (if winner
-              (state/end-game! status-message game-end-message end-button game-id winner)
+              (state/end-game! game-id status-message game-end-message end-button winner)
               (do
                 (state/toggle-player! game-id)
                 (stream/broadcast @state/all-streams status-message board-message game-id)))))
