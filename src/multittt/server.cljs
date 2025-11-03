@@ -8,7 +8,6 @@
             [multittt.state :as state]
             [multittt.stream :as stream]))
 
-
 ;; gameplay validation
 (defn all-same [arr]
   (when (apply = arr) (first arr)))
@@ -89,7 +88,6 @@
           path url.pathname
           params url.searchParams
           signals (.readSignals d/ServerSentEventGenerator req)
-          board (get-signal signals "board")
           game-id (get-signal signals "game_id")
           playertype (get-signal signals "playertype")]
     (case path
@@ -109,8 +107,8 @@
               (state/end-game! status-message game-end-message end-button game-id winner)
               (do
                 (state/toggle-player! game-id)
-                (stream/broadcast game-id))))
-          (new js/Respose)))
+                (stream/broadcast @state/all-streams status-message board-message game-id)))))
+        (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
                (partial stream-handler game-id playertype)

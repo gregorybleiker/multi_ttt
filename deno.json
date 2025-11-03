@@ -1,8 +1,8 @@
 {
     "tasks": {
         "server": "deno run -A jsr:@babashka/nbb -cp src -m  multittt.server",
-        "test": "deno run -A jsr:@babashka/nbb -x tests/run-tests",
-        "nrepl": "deno run -A --unstable-node-globals jsr:@babashka/nbb nrepl-server :port 1234"
+        "test": "deno run -A jsr:@babashka/nbb -cp src -x tests/run-tests",
+        "repl": "deno run -A --unstable-node-globals jsr:@babashka/nbb -cp src"
     },
     "imports": {
         "@babashka/nbb": "jsr:@babashka/nbb@^1.3.204",

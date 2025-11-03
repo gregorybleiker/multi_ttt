@@ -1,6 +1,6 @@
 (ns tests
   (:require
-   [server :as server]
+   [multittt.server :as server]
    [cljs.test :as t :refer [deftest is testing]]
    ))
 

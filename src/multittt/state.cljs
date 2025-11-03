@@ -34,9 +34,9 @@
     (when-not (stream/send-message stream (status-message  "cleaning"))
       (swap! all-streams update-in [game-id :streams] dissoc playertype))))
 
-(defn end-game! [state game-id status-message game-end-message end-button winner]
-  (let [board (get-in state [game-id :board])
-        streams (get-in state[game-id :streams])]
+(defn end-game! [game-id status-message game-end-message end-button winner]
+  (let [board (get-in all-streams [game-id :board])
+        streams (get-in all-streams [game-id :streams])]
     (doseq [s (map second streams)]
       (stream/send-message s (status-message (str winner " wins the game")))
       (stream/send-message s (game-end-message board winner))
