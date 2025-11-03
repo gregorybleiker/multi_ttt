@@ -1,7 +1,7 @@
 (ns multittt.server
   (:require ["npm:react"]
             ["npm:react-dom/server"]
-            ["npm:express" :as express]
+            ["npm:express$default" :as express]
             [reagent.dom.server :refer [render-to-string]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [promesa.core :as p]
@@ -124,9 +124,17 @@
 
 ;; Server
 (defonce the-server nil)
+(defonce e-server nil)
 
 (defn start-server []
-  (set! the-server (js/Deno.serve routes)))
+  (set! the-server (js/Deno.serve routes))
+  (set! e-server (express.))
+  (let [r (.Router express)]
+  (.get r"/" (fn [req res]
+                   (.send res "Birds home page")))
+  (.use e-server r)
+  (.listen e-server 9999))
+  )
 
 ;; these are for the repl
 (defn stop-server [] (.shutdown the-server))
