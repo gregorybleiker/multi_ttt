@@ -6,6 +6,9 @@
   all-streams
   (atom (hash-map)))
 
+(defn clear-streams! []
+   (reset! all-streams (hash-map))
+)
 (defn set-board! [game-id board]
   (swap! all-streams (fn [state] (update-in state [game-id :board] (fn [_] board)))))
 
@@ -42,3 +45,9 @@
       (stream/send-message s (game-end-message board winner))
       (stream/send-message s end-button))
     (swap! all-streams dissoc game-id)))
+
+(defn stream-handler [game-id playertype status-message board-message stream]
+  (ensure-init-board! game-id)
+  (clean-stream! game-id status-message playertype)
+  (add-stream! game-id playertype stream)
+  (stream/broadcast @all-streams status-message board-message game-id))

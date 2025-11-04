@@ -11,15 +11,6 @@
             [multittt.game :as game]
             [multittt.frontend :as frontend]))
 
-;; Connection management
-;
-
-(defn stream-handler [game-id playertype stream]
-  (state/ensure-init-board! game-id)
-  (state/clean-stream! game-id frontend/status-message playertype)
-  (state/add-stream! game-id playertype stream)
-  (stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id))
-
 (defn get-signal [signals name]
   (j/get-in signals [:signals name]))
 
@@ -51,7 +42,7 @@
         (new js/Response))
       "/actions/connect"
       (.stream d/ServerSentEventGenerator
-               (partial stream-handler game-id playertype)
+               (partial state/stream-handler game-id playertype frontend/status-message frontend/board-message)
                #js{:keepalive true})
       "/actions/redirect"
       (let [url_url (.get params "url")
@@ -63,27 +54,12 @@
 
 ;; Server
 (defonce the-server nil)
-(defonce e-server nil)
+;(defonce e-server nil)
 
-(defn start-server []
+(defn start [] 
   (set! the-server (js/Deno.serve routes))
-  (set! e-server (express.))
-  (let [r (.Router express)]
-  (.get r"/" (fn [req res]
-                   (.send res "Birds home page")))
-  (.use e-server r)
-  (.listen e-server 9999))
-  )
+)
 
-;; these are for the repl
-(defn stop-server [] (.shutdown the-server))
-
-(defn restart []
-  (p/do!
-   (reset! state/all-streams (hash-map))
-   (stop-server)
-   (start-server)
-   ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
-   (prn "restarted")))
-
-(defn -main [] (p/do! (start-server)))
+(defn stop []
+ (.shutdown the-server)
+)

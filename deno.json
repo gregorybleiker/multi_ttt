@@ -1,6 +1,6 @@
 {
     "tasks": {
-        "server": "deno run -A jsr:@babashka/nbb -cp src -m  multittt.server",
+        "server": "deno run -A jsr:@babashka/nbb -cp src -m  multittt.control",
         "test": "deno run -A jsr:@babashka/nbb -cp src -x tests/run-tests",
         "repl": "deno run -A --unstable-node-globals jsr:@babashka/nbb -cp src"
     },
