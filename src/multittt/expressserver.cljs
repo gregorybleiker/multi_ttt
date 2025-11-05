@@ -56,20 +56,17 @@
 (defonce e-server nil)
 (defonce e-router (atom {}))
 
-(defn start [] 
+(defn start []
   (set! e-server (express.))
   (let [r (.Router express)]
-  (reset! e-router r
-  (.get r "/" (fn [req res]
-                   (.send res "Birds home page")))
-  (.use e-server r)
-  (.listen e-server 9999))
-)
+    (reset! e-router r)
+    (.get r "/" (fn [req res]
+                  (.send res "Birds home page")))
+    (.use e-server r)
+    (.listen e-server 9999)))
 
 (defn add-route []
-(.get @e-router "/hh" (fn [req res] (.send res "second")))
-)
+  (.get @e-router "/hh" (fn [req res] (.send res "second"))))
 
 (defn stop []
- (.close e-server)
-)
+  (.close e-server))

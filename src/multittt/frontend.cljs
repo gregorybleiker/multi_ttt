@@ -37,6 +37,8 @@
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
 
+(def homepage (render-to-string [:html head-part welcome-page]))
+
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
                            (if-not (get-in streams [game-id :streams "O"]) "O"
@@ -55,3 +57,5 @@
              [:div {:id "status"}]
              [:div {:id "endedbutton"}]]
             [:div {:class "column"}]]]]])))
+            
+(defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))

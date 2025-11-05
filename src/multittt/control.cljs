@@ -2,9 +2,9 @@
   (:require [multittt.honoserver :as server]
             [multittt.state :as state]
             [promesa.core :as p]))
-
+(def port 8000)
 (defn start-server []
-  (server/start)
+  (server/start port)
   ;(server/add-route)
   )
 
@@ -15,7 +15,7 @@
   (p/do!
    (state/clear-streams!)
    (server/stop)
-   (server/start)
+   (server/start port)
    ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
    (prn "restarted")))
 
