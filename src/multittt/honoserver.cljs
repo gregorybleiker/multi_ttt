@@ -1,6 +1,8 @@
-(ns multittt.server
+(ns multittt.honoserver
   (:require ["npm:react"]
             ["npm:react-dom/server"]
+            ["jsr:@hono/hono" :as hono]
+            ["npm:@hono/node-server" :refer [serve]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [reagent.dom.server :refer [render-to-string]]
             [promesa.core :as p]
@@ -51,12 +53,19 @@
                    #js{:keepalive true})))
       (new js/Response "nope"))))
 
-(defonce the-server nil)
+;; Server
+(defonce webserver (atom {}))
+(defonce webrouter (atom {}))
 
-(defn start [] 
-  (set! the-server (js/Deno.serve routes))
-)
+(defn start []
+    (reset! webrouter (hono/Hono.))
+    (.get @webrouter "/" (fn [c] (.text c "Birds home page")))
+    (.get @webrouter "/blu" (fn [c] (.text c "blue")))
+    (reset! webserver (serve #js {:fetch (.-fetch @webrouter) :port 1234})))
 
 (defn stop []
- (.shutdown the-server)
-)
+  (.close @webserver))
+
+(defn add-route []
+  (.get @webrouter "/bla" (fn [c] (.text c "new route")))
+)  

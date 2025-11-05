@@ -1,6 +1,7 @@
-(ns multittt.server
+(ns multittt.expressserver
   (:require ["npm:react"]
             ["npm:react-dom/server"]
+            ["npm:express$default" :as express]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [reagent.dom.server :refer [render-to-string]]
             [promesa.core :as p]
@@ -51,12 +52,24 @@
                    #js{:keepalive true})))
       (new js/Response "nope"))))
 
-(defonce the-server nil)
+;; Server
+(defonce e-server nil)
+(defonce e-router (atom {}))
 
 (defn start [] 
-  (set! the-server (js/Deno.serve routes))
+  (set! e-server (express.))
+  (let [r (.Router express)]
+  (reset! e-router r
+  (.get r "/" (fn [req res]
+                   (.send res "Birds home page")))
+  (.use e-server r)
+  (.listen e-server 9999))
+)
+
+(defn add-route []
+(.get @e-router "/hh" (fn [req res] (.send res "second")))
 )
 
 (defn stop []
- (.shutdown the-server)
+ (.close e-server)
 )

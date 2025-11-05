@@ -1,16 +1,11 @@
 (ns multittt.control
-  (:require [multittt.server :as server]
+  (:require [multittt.honoserver :as server]
             [multittt.state :as state]
             [promesa.core :as p]))
 
 (defn start-server []
   (server/start)
-  ; (set! e-server (express.))
-  ; (let [r (.Router express)]
-  ; (.get r"/" (fn [req res]
-  ;                  (.send res "Birds home page")))
-  ; (.use e-server r)
-  ; (.listen e-server 9999))
+  ;(server/add-route)
   )
 
 ;; these are for the repl
@@ -24,4 +19,4 @@
    ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
    (prn "restarted")))
 
-(defn -main [] (p/do! (server/start)))
+(defn -main [] (p/do! (start-server)))
