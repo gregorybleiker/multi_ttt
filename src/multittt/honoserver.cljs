@@ -4,7 +4,6 @@
             ["jsr:@hono/hono" :as hono]
             ["npm:@hono/node-server" :refer [serve]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
-            [reagent.dom.server :refer [render-to-string]]
             [promesa.core :as p]
             [applied-science.js-interop :as j]
             [multittt.state :as state]
@@ -13,7 +12,9 @@
             [multittt.frontend :as frontend]))
 
 (defn get-signal [signals name]
-  (j/get-in signals [:signals name]))
+  (if signals
+    (j/get-in signals [:signals name])
+    nil))
 
 (defn route2! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
@@ -23,10 +24,29 @@
                                                 (fn [stream] (.executeScript stream redirect_command)
                                                   #js{:keepalive true})))))
   (.get r "actions/connect" (fn [c] (let [game-id (.get c "game-id")
-                                          _ (println game-id)] (.stream d/ServerSentEventGenerator
-                                                                        (partial state/stream-handler game-id) ;;game-id playertype frontend/status-message frontend/board-message)
-                                                                        #js{:keepalive true}))))
-  (.get r "/game" (fn [c] (let [gameid (.query c.req "game_id")] (.html c (frontend/gamepage @state/all-streams gameid))))))
+                                          playertype (.get c "playertype")]
+                                      (.stream d/ServerSentEventGenerator
+                                               (partial state/stream-handler
+                                                        game-id playertype
+                                                        frontend/status-message
+                                                        frontend/board-message)))))
+  (.get r "actions/toggle" (fn [c]
+                             (let [game-id (.get c "game-id")
+                                   playertype (.get c "playertype")
+                                   current-player (get-in @state/all-streams [game-id :player])
+                                   url_cell_id (parse-long (or (.query c.req "cell_id") ""))]
+                               (when (= playertype current-player)
+                                 (state/update-board! game-id url_cell_id playertype)
+                                 (let [board (get-in @state/all-streams [game-id :board])
+                                       winner (game/check-win board)]
+                                   (if winner
+                                     (state/end-game! game-id frontend/status-message frontend/game-end-message frontend/end-button winner)
+                                     (do
+                                       (state/toggle-player! game-id)
+                                       (stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)))))
+                               (new js/Response))))
+  (.get r "/game" (fn [c] (let [game-id (.query c.req "game_id")] (.html c (frontend/gamepage @state/all-streams game-id)))))
+  (.get r "*" (fn [c] (.text c "nope"))))
 
 (defn routes [req]
   (p/let [url (new js/URL req.url)
@@ -36,9 +56,6 @@
           game-id (get-signal signals "game_id")
           playertype (get-signal signals "playertype")]
     (case path
-      "/game"
-      (let [url-game-id (.get params "game_id")]
-        (new js/Response  #js{:headers #js{:content-type "text/html"}}))
       "/actions/toggle"
       (let [current-player (get-in @state/all-streams [game-id :player])
             url_cell_id (parse-long (or (.get params "cell_id") ""))]
@@ -52,35 +69,25 @@
                 (state/toggle-player! game-id)
                 (stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)))))
         (new js/Response))
-      "/actions/connect"
-      (.stream d/ServerSentEventGenerator
-               (partial state/stream-handler game-id playertype frontend/status-message frontend/board-message)
-               #js{:keepalive true})
-      "/actions/redirect"
-      (let [url_url (.get params "url")
-            redirect_command (str "setTimeout(() => window.location = '" url_url "')")]
-        (.stream d/ServerSentEventGenerator
-                 (fn [stream] (.executeScript stream redirect_command)
-                   #js{:keepalive true})))
       (new js/Response "nope"))))
 
 ;; Server
 (defonce webserver (atom {}))
 (defonce webrouter (atom {}))
 
+(defn signalware [c next]
+  (p/let [signals (.readSignals d/ServerSentEventGenerator c.req)]
+    (when signals
+      (let [_ (println (js/JSON.stringify c.req))
+            game-id (get-signal signals "game_id")
+            playertype (get-signal signals "playertype")]
+        (.set c "game-id" game-id)
+        (.set c "playertype" playertype)))
+    (p/do! (next))))
+
 (defn start [port]
   (reset! webrouter (hono/Hono.))
-  (.use @webrouter
-        (fn [c next]
-          (let [signals (.readSignals d/ServerSentEventGenerator c.req)
-                game-id (get-signal signals "game_id")
-                playertype (get-signal signals "playertype")
-                _ (println (str signals " -- " game-id))]
-            (.set c "game-id" game-id)
-            (.set c "playertype" playertype)
-            (.then (next)))))
-                 ;(fn []
-                 ;  (js/console.log "middleware 1 end")))))
+  (.use @webrouter signalware)
   (route2! @webrouter)
   (reset! webserver (serve #js {:fetch (.-fetch @webrouter) :port port})))
 
