@@ -1,6 +1,7 @@
 (ns multittt.control
   (:require [multittt.honoserver :as server]
             [multittt.state :as state]
+            [nbb.nrepl-server :as nrepl]
             [promesa.core :as p]))
 (def port 8000)
 (defn start-server []
@@ -19,4 +20,4 @@
    ;; important: last expr should not be a promise, so fn returns only after all promises above are resolved
    (prn "restarted")))
 
-(defn -main [] (p/do! (start-server)))
+(defn -main [] (p/do! (nrepl/start-server! {:port 1337}) (start-server)))

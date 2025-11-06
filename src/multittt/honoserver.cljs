@@ -29,14 +29,14 @@
                                                (partial state/stream-handler
                                                         game-id playertype
                                                         frontend/status-message
-                                                        frontend/board-message)))))
+                                                        frontend/board-message) #js{:keepalive true}))))
   (.get r "actions/toggle" (fn [c]
                              (let [game-id (.get c "game-id")
                                    playertype (.get c "playertype")
                                    current-player (get-in @state/all-streams [game-id :player])
                                    url_cell_id (parse-long (or (.query c.req "cell_id") ""))]
                                (when (= playertype current-player)
-                                 (state/update-board! game-id url_cell_id playertype)
+                                 (let [_ (println "updating")] (state/update-board! game-id url_cell_id playertype))
                                  (let [board (get-in @state/all-streams [game-id :board])
                                        winner (game/check-win board)]
                                    (if winner
@@ -48,30 +48,6 @@
   (.get r "/game" (fn [c] (let [game-id (.query c.req "game_id")] (.html c (frontend/gamepage @state/all-streams game-id)))))
   (.get r "*" (fn [c] (.text c "nope"))))
 
-(defn routes [req]
-  (p/let [url (new js/URL req.url)
-          path url.pathname
-          params url.searchParams
-          signals (.readSignals d/ServerSentEventGenerator req)
-          game-id (get-signal signals "game_id")
-          playertype (get-signal signals "playertype")]
-    (case path
-      "/actions/toggle"
-      (let [current-player (get-in @state/all-streams [game-id :player])
-            url_cell_id (parse-long (or (.get params "cell_id") ""))]
-        (when (= playertype current-player)
-          (state/update-board! game-id url_cell_id playertype)
-          (let [board (get-in @state/all-streams [game-id :board])
-                winner (game/check-win board)]
-            (if winner
-              (state/end-game! game-id frontend/status-message frontend/game-end-message frontend/end-button winner)
-              (do
-                (state/toggle-player! game-id)
-                (stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)))))
-        (new js/Response))
-      (new js/Response "nope"))))
-
-;; Server
 (defonce webserver (atom {}))
 (defonce webrouter (atom {}))
 

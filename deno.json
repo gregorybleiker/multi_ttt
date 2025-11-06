@@ -1,5 +1,6 @@
 {
     "tasks": {
+        "watch": "ls src/multittt/* | entr -r deno run server",
         "server": "deno run -A jsr:@babashka/nbb -cp src -m  multittt.control",
         "bunserver": "bunx nbb -cp src -m  multittt.control",
         "test": "deno run -A jsr:@babashka/nbb -cp src -x tests/run-tests",
