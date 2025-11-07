@@ -1,7 +1,9 @@
 (ns multittt.frontend
-(:require 
-  [reagent.dom.server :refer [render-to-string]]))
-  
+  (:require
+   [reagent.dom.server :refer [render-to-string render-to-static-markup]]
+   [multittt.hiccuper :as h]))
+   
+
 ; frontend related
 (defn to-js [s] (js/JSON.stringify (clj->js s)))
 (defn board-to-fragment [board winner]
@@ -19,9 +21,19 @@
 (defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
 (def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
 
+(defn my-alert [] (js/alert "you clicked") (set! (.-my-alert js/window) my-alert) )
+
+(def testscittle [:script {:type "application/x-scittle"} "
+                  (defn my-alert []
+       (js/alert \" You clicked! \"))
+      ;; export function to use from JavaScript:
+      (set! (.-my_alert js/window) my-alert)
+      "])
+
 (def head-part
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js"}]
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
    [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]])
 
 (def welcome-page
@@ -35,9 +47,11 @@
      [:div {:class "block"}
       [:button {:class "button" :data-show "$game_id != ''"
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
-       [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]]]])
+       [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]
+     [:div {:id "replicanttest"}]
+     [:button {:onclick "my_alert()" } "clickme"]]]])
 
-(def homepage (render-to-string [:html head-part welcome-page]))
+(def homepage (h/hiccup->document [:html head-part testscittle welcome-page]))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
@@ -57,5 +71,5 @@
              [:div {:id "status"}]
              [:div {:id "endedbutton"}]]
             [:div {:class "column"}]]]]])))
-            
+
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))

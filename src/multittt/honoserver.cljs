@@ -16,7 +16,7 @@
     (j/get-in signals [:signals name])
     nil))
 
-(defn route2! [r]
+(defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
   (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
                                            redirect_command (str "setTimeout(() => window.location = '" url "')")]
@@ -64,7 +64,7 @@
 (defn start [port]
   (reset! webrouter (hono/Hono.))
   (.use @webrouter signalware)
-  (route2! @webrouter)
+  (route! @webrouter)
   (reset! webserver (serve #js {:fetch (.-fetch @webrouter) :port port})))
 
 (defn stop []
