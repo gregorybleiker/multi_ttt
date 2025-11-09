@@ -22,18 +22,36 @@
 
 (defn my-alert [] (js/alert "you clicked") (set! (.-my-alert js/window) my-alert))
 
-(def testscittle [:script {:type "application/x-scittle"} "
-                  (defn my-alert []
-       (js/alert \" You clicked! \"))
-      ;; export function to use from JavaScript:
-      (set! (.-my_alert js/window) my-alert)
-      "])
+(def testscittle [:script {:type "application/x-scittle" :data-text "
+      (require '[replicant.string :as s]
+      '[replicant.dom :as r])
+      (def el (js/document.getElementById \"replicanttest\"))
+      (r/render el $test_hiccup)
+"}])
+
+(def renderelem [:script {:type "application/x-scittle"} " 
+      (require
+      '[replicant.string :as s]
+      '[clojure.edn :as edn]
+      '[replicant.dom :as r])
+      (defn renderelm [elem hic]
+
+      (def el (js/document.getElementById elem))
+      (println elem)
+      (println el)
+      (r/render el (edn/read-string hic))
+      )
+      
+      (set! (.-renderelem js/window) renderelm)
+
+      "
+      ])
 
 (def testreplicant [:script  {:type "application/x-scittle"} "
       (require '[replicant.string :as s]
       '[replicant.dom :as r])
       (def el (js/document.getElementById \"replicanttest\"))
-      (r/render el [:div [:h1 {:class \"\"} \"hello\"] [:div \"hello you\"] ])
+      (r/render el [:p \"hellooooo\" ])
       "])
 
 (def head-part
@@ -48,7 +66,7 @@
 
 (def welcome-page
   [:body
-   [:div  {:data-signals "{game_id: ''}"}]
+   [:div  {:data-signals "{game_id: '', test_hiccup: '[:p \"iiiiihiii\"]'}"}]
    [:section {:class "section"}
     [:div {:class "container has-text-centered"}
      [:h1 {:class "title"} "Start a Game"]
@@ -61,7 +79,7 @@
      [:div {:id "replicanttest"}]
      [:button {:onclick "my_alert()"} "clickme"]]]])
 
-(def homepage (h/hiccup->document [:html head-part testscittle testreplicant welcome-page]))
+(def homepage (h/hiccup->document [:html head-part welcome-page renderelem ] ))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
