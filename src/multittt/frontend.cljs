@@ -2,7 +2,6 @@
   (:require
    [reagent.dom.server :refer [render-to-string render-to-static-markup]]
    [multittt.hiccuper :as h]))
-   
 
 ; frontend related
 (defn to-js [s] (js/JSON.stringify (clj->js s)))
@@ -21,7 +20,7 @@
 (defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
 (def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
 
-(defn my-alert [] (js/alert "you clicked") (set! (.-my-alert js/window) my-alert) )
+(defn my-alert [] (js/alert "you clicked") (set! (.-my-alert js/window) my-alert))
 
 (def testscittle [:script {:type "application/x-scittle"} "
                   (defn my-alert []
@@ -30,10 +29,21 @@
       (set! (.-my_alert js/window) my-alert)
       "])
 
+(def testreplicant [:script  {:type "application/x-scittle"} "
+      (require '[replicant.string :as s]
+      '[replicant.dom :as r])
+      (def el (js/document.getElementById \"replicanttest\"))
+      (r/render el [:div [:h1 {:class \"\"} \"hello\"] [:div \"hello you\"] ])
+      "])
+
 (def head-part
   [:head
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js"}]
-   [:script {:type "module" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
+   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
+   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.replicant.js"}]
+   [:script "var SCITTLE_NREPL_WEBSOCKET_PORT = 1340"]
+   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.nrepl.js"}]
+
    [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]])
 
 (def welcome-page
@@ -49,9 +59,9 @@
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]
      [:div {:id "replicanttest"}]
-     [:button {:onclick "my_alert()" } "clickme"]]]])
+     [:button {:onclick "my_alert()"} "clickme"]]]])
 
-(def homepage (h/hiccup->document [:html head-part testscittle welcome-page]))
+(def homepage (h/hiccup->document [:html head-part testscittle testreplicant welcome-page]))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
