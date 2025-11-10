@@ -34,18 +34,18 @@
       '[replicant.string :as s]
       '[clojure.edn :as edn]
       '[replicant.dom :as r])
+      (println \"I'm loading myself\")
       (defn renderelm [elem hic]
 
       (def el (js/document.getElementById elem))
       (println elem)
-      (println el)
+      (println hic)
       (r/render el (edn/read-string hic))
-      )
-      
+      \"\"
+       )      
       (set! (.-renderelem js/window) renderelm)
 
-      "
-      ])
+      "])
 
 (def testreplicant [:script  {:type "application/x-scittle"} "
       (require '[replicant.string :as s]
@@ -56,13 +56,19 @@
 
 (def head-part
   [:head
-   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js"}]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.replicant.js"}]
    [:script "var SCITTLE_NREPL_WEBSOCKET_PORT = 1340"]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.nrepl.js"}]
+   renderelem
+   [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]
+   [:script {:type "module"} "
 
-   [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]])
+  scittle.core.disable_auto_eval();
+  await scittle.core.eval_script_tags();
+  await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
+  "]])
+
 
 (def welcome-page
   [:body
@@ -76,10 +82,11 @@
       [:button {:class "button" :data-show "$game_id != ''"
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]
-     [:div {:id "replicanttest"}]
-     [:button {:onclick "my_alert()"} "clickme"]]]])
+     [:div {:data-text "window.renderelem('replicanttest', $test_hiccup)"}]
+     [:div {:id "replicanttest" :display "none"}]
+   [:button {:onclick "my_alert()"} "clickme"]]]])
 
-(def homepage (h/hiccup->document [:html head-part welcome-page renderelem ] ))
+(def homepage (h/hiccup->document [:html head-part welcome-page]))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
