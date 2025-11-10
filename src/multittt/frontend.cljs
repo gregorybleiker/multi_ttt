@@ -47,12 +47,6 @@
 
       "])
 
-(def testreplicant [:script  {:type "application/x-scittle"} "
-      (require '[replicant.string :as s]
-      '[replicant.dom :as r])
-      (def el (js/document.getElementById \"replicanttest\"))
-      (r/render el [:p \"hellooooo\" ])
-      "])
 
 (def head-part
   [:head
@@ -82,8 +76,8 @@
       [:button {:class "button" :data-show "$game_id != ''"
                 :data-on-click "@get( '/actions/redirect?url=' + encodeURI('/game?game_id=' + $game_id.toUpperCase()))"}
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]
-     [:div {:data-text "window.renderelem('replicanttest', $test_hiccup)"}]
-     [:div {:id "replicanttest" :display "none"}]
+     [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
+     [:div {:id "replicanttest"}]
    [:button {:onclick "my_alert()"} "clickme"]]]])
 
 (def homepage (h/hiccup->document [:html head-part welcome-page]))
@@ -95,7 +89,7 @@
         board (get-in streams [game-id :board])]
     (if (= playertype "Full") [:body [:h1 "Sorry, we're full"]]
         [:body
-         [:div  {:data-signals (str "{game_id:" (to-js game-id) ", playertype: " (to-js playertype) ", board:'[]'}")}]
+         [:div  {:data-signals (str "{test_hiccup: '[:p \"hello\" ]',  game_id:" (to-js game-id) ", playertype: " (to-js playertype) ", board:'[]'}")}]
          [:div {:data-on-load "@get('/actions/connect')"}]
          [:div {:class "section"}
           [:div {:class "container"}
@@ -105,6 +99,9 @@
              [:div {:class "fixed-grid has-3-cols"} (board-to-fragment board nil)]
              [:div {:id "status"}]
              [:div {:id "endedbutton"}]]
-            [:div {:class "column"}]]]]])))
+            [:div {:class "column"}]]]]
+     [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
+     [:div {:id "replicanttest"}]
+            ])))
 
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
