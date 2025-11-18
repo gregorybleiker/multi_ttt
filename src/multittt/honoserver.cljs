@@ -2,9 +2,11 @@
   (:require ["npm:react"]
             ["npm:react-dom/server"]
             ["jsr:@hono/hono" :as hono]
+            ["jsr:@hono/hono/streaming" :as hs]
             ["npm:@hono/node-server" :refer [serve]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
             [promesa.core :as p]
+            [nbb.core :refer [await]]
             [applied-science.js-interop :as j]
             [multittt.state :as state]
             [multittt.stream :as stream]
@@ -30,6 +32,16 @@
                                                         game-id playertype
                                                         frontend/status-message
                                                         frontend/board-message) #js{:keepalive true}))))
+  (.get r "connect2" (fn [c] (hs/streamText c (fn [stream] (.writeln stream "Hello")))))
+  (.get r "connect" (fn [c] (hs/streamSSE c (fn [stream]
+                                               (let [_ (println "here")]
+                                                 (await (p/do
+                                                   (.writeSSE stream #js{:data #js{:msg "hello"} :event "update-time" :id "abc"})
+                                                   (.sleep stream 5000)
+                                              (.writeSSE stream #js{:data #js{:msg 'hello2j'} :event 'update-time' :id 'ab'})
+                                                   )
+                                                 (println "ended")))))))
+
   (.get r "actions/toggle" (fn [c]
                              (let [game-id (.get c "game-id")
                                    playertype (.get c "playertype")
