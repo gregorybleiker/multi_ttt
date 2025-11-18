@@ -53,16 +53,19 @@
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.replicant.js"}]
    [:script "var SCITTLE_NREPL_WEBSOCKET_PORT = 1340"]
-   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.nrepl.js"}]
+;   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.nrepl.js"}]
    renderelem
    [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]
-   [:script {:type "module"} "
+;;   [:script {:type "module"} "
 
-  scittle.core.disable_auto_eval();
-  await scittle.core.eval_script_tags();
-  await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
-  "]])
+  ; scittle.core.disable_auto_eval();
+  ; await scittle.core.eval_script_tags();
+  ; await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
+ ; "]])
+  [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]])
 
+
+(def starter-page [:body {:id "startingpoint" :data-attr:dummy "el.id" :data-init "@get('/connect')"}])
 
 (def welcome-page
   [:body
@@ -80,7 +83,7 @@
      [:div {:id "replicanttest"}]
    [:button {:onclick "my_alert()"} "clickme"]]]])
 
-(def homepage (h/hiccup->document [:html head-part welcome-page]))
+(def homepage (h/hiccup->document [:html head-part starter-page]))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
