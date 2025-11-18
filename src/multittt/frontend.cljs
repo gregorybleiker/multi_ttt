@@ -62,6 +62,11 @@
   ; await scittle.core.eval_script_tags();
   ; await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
  ; "]])
+  [:script {:type "application/javascript"} "
+  const evtSource = new EventSource('/connect');
+  evtSource.onmessage = (event) => {alert(JSON.stringify(event))};
+  evtSource.addEventListener('update-time', (event) => {console.log(event)})
+  " ]
   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]])
 
 

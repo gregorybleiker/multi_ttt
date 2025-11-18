@@ -18,6 +18,8 @@
     (j/get-in signals [:signals name])
     nil))
 
+(defonce sestream (atom {}))
+
 (defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
   (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
@@ -35,12 +37,14 @@
   (.get r "connect2" (fn [c] (hs/streamText c (fn [stream] (.writeln stream "Hello")))))
   (.get r "connect" (fn [c] (hs/streamSSE c (fn [stream]
                                                (let [_ (println "here")]
-                                                 (await (p/do
+                                                (reset! sestream stream)
+                                                 
                                                    (.writeSSE stream #js{:data #js{:msg "hello"} :event "update-time" :id "abc"})
-                                                   (.sleep stream 5000)
-                                              (.writeSSE stream #js{:data #js{:msg 'hello2j'} :event 'update-time' :id 'ab'})
-                                                   )
-                                                 (println "ended")))))))
+;(p/promise nil)
+                                                   ;(.sleep stream 1000)
+;                                              (.writeSSE stream #js{:data #js{:msg 'hello2j'} :event 'update-time' :id 'ab'})
+                                                   
+                                                 )))))
 
   (.get r "actions/toggle" (fn [c]
                              (let [game-id (.get c "game-id")
