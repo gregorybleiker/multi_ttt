@@ -5,6 +5,7 @@
             ["jsr:@hono/hono/streaming" :as hs]
             ["npm:@hono/node-server" :refer [serve]]
             ["npm:@starfederation/datastar-sdk/web" :as d]
+            ["jsr:@mwid/better-sse" :refer [createResponse]]
             [promesa.core :as p]
             [nbb.core :refer [await]]
             [applied-science.js-interop :as j]
@@ -19,7 +20,7 @@
     nil))
 
 (defonce sestream (atom {}))
-
+(defonce idcounter (atom 1))
 (defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
   (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
@@ -34,18 +35,23 @@
                                                         game-id playertype
                                                         frontend/status-message
                                                         frontend/board-message) #js{:keepalive true}))))
-  (.get r "connect2" (fn [c] (hs/streamText c (fn [stream] (.writeln stream "Hello")))))
-  (.get r "connect" (fn [c] (hs/streamSSE c (fn [stream]
-                                               (let [_ (println "here")]
-                                                (reset! sestream stream)
-                                                 
-                                                   (.writeSSE stream #js{:data #js{:msg "hello"} :event "update-time" :id "abc"})
-;(p/promise nil)
-                                                   ;(.sleep stream 1000)
-;                                              (.writeSSE stream #js{:data #js{:msg 'hello2j'} :event 'update-time' :id 'ab'})
-                                                   
-                                                 )))))
+  (.get r "connect2" (fn [c] (await (.push @sestream "hello again!" "update-time" ))))
 
+  (.get r "connect3" (fn [c]
+  (createResponse c.req.raw (fn [session]
+(reset! sestream session)
+  (.push session "Hello world!" "message")))))
+  (.get r "connect" (fn [c] (hs/streamSSE c (fn [stream]
+                                              (let [_ (println "here")]
+                                                (reset! sestream stream)
+                                                (swap! idcounter inc)
+                                                (await (.writeSSE
+                                                        stream #js{:retry 10000 :data #js{:msg "hello"} :event "update-time" :id @idcounter}))
+                                                (p/deferred)
+;(p/promise nil)
+                                                   ; (.sleep stream 5000)
+;                                              (.writeSSE stream #js{:data #js{:msg 'hello2j'} :event 'update-time' :id 'ab'})
+                                                )))))
   (.get r "actions/toggle" (fn [c]
                              (let [game-id (.get c "game-id")
                                    playertype (.get c "playertype")
