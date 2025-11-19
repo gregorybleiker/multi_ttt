@@ -19,34 +19,35 @@
 (defn board-message [board] (render-to-string (board-to-fragment board nil)))
 (defn game-end-message [board winner] (render-to-string (board-to-fragment board winner)))
 (def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
-
-(defn my-alert [] (js/alert "you clicked") (set! (.-my-alert js/window) my-alert))
-
-(def testscittle [:script {:type "application/x-scittle" :data-text "
-      (require '[replicant.string :as s]
-      '[replicant.dom :as r])
-      (def el (js/document.getElementById \"replicanttest\"))
-      (r/render el $test_hiccup)
-"}])
+(def action-button [:button {:class "button" :data-on:click "@get('/actions/changetext')" :id "actionbutton"} "Press me!"])
 
 (def renderelem [:script {:type "application/x-scittle"} " 
       (require
       '[replicant.string :as s]
       '[clojure.edn :as edn]
       '[replicant.dom :as r])
-      (println \"I'm loading myself\")
-      (defn renderelm [elem hic]
-
-      (def el (js/document.getElementById elem))
+      (defn render-element [elem hic]
       (println elem)
+      (def el (js/document.getElementById elem))
       (println hic)
       (r/render el (edn/read-string hic))
       \"\"
        )      
-      (set! (.-renderelem js/window) renderelm)
+      (set! (.-renderelement js/window) render-element)
 
       "])
 
+(def connect [:script {:type "application/x-scittle"} " 
+(let [sessionid (clojure.core/random-uuid)
+evtSrc (js/EventSource. (str \"connect?sessionid=\" sessionid ))
+sessionElement (js/document.createElement \"div\")
+_ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid \"'\" ))]
+(.appendChild js/document.body sessionElement)
+(.addEventListener evtSrc \"render-element\"
+(fn [evt]
+(let [data (js/JSON.parse evt.data)]
+(js/window.renderelement data.elem data.hic)))))
+      "])
 
 (def head-part
   [:head
@@ -55,6 +56,7 @@
    [:script "var SCITTLE_NREPL_WEBSOCKET_PORT = 1340"]
 ;   [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.nrepl.js"}]
    renderelem
+   connect
    [:link {:rel "stylesheet" :href  "https://cdn.jsdelivr.net/npm/bulma@1.0.4/css/bulma.min.css"}]
 ;;   [:script {:type "module"} "
 
@@ -62,16 +64,9 @@
   ; await scittle.core.eval_script_tags();
   ; await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
  ; "]])
-  [:script {:type "application/javascript"} "
-  const evtSource = new EventSource('/connect3');
-  // evtSource.onmessage = (event) => {alert(JSON.stringify(event))};
-  evtSource.addEventListener('update-time', (event) => {console.log(event)})
-  " ]
-;  [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]
-])
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]])
 
-
-(def starter-page [:body {:id "startingpoint"}])
+(def starter-page [:body [:div {:id "topelement"}] action-button ])
 
 (def welcome-page
   [:body
@@ -87,7 +82,7 @@
        [:span {:data-text "'Start Game ' + $game_id.toUpperCase()"}]]]
      [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
      [:div {:id "replicanttest"}]
-   [:button {:onclick "my_alert()"} "clickme"]]]])
+     [:button {:onclick "my_alert()"} "clickme"]]]])
 
 (def homepage (h/hiccup->document [:html head-part starter-page]))
 
@@ -109,8 +104,7 @@
              [:div {:id "status"}]
              [:div {:id "endedbutton"}]]
             [:div {:class "column"}]]]]
-     [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
-     [:div {:id "replicanttest"}]
-            ])))
+         [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
+         [:div {:id "replicanttest"}]])))
 
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))

@@ -1,5 +1,5 @@
 (ns multittt.control
-  (:require [multittt.honoserver :as server]
+  (:require [multittt.server :as server]
             [multittt.state :as state]
             [nbb.nrepl-server :as nrepl]
             [promesa.core :as p]))

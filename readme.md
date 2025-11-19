@@ -12,6 +12,16 @@ ls src/multittt/* | entr -r deno run server
 
 # start browser repl
 
+Settings for rebel
+
+````
+greg@gbl-medion:~/projects/multi_ttt$ cat ~/.clojure/rebel_readline.edn
+{:key-map :viins
+ :key-bindings {:viins [["^M" :clojure-force-accept-line
+                         "^J" :clojure-force-accept-line]]}}
+```
+  
+
 ./browser-repl.bb
 
 clojure -T:nrebel :port 1339
