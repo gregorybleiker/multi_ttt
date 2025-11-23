@@ -25,10 +25,15 @@
 
 (defn change-page [sessionid]
   (let [session (@sessions sessionid)]
-    (.push session #js{:elem "topelement" :hic "[:p \"goodbye\"]"} "render-element")))
+    (stream/transfer session "topelement" [:p "goodbye"])))
 
 (defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
+  (.get r "connect" (fn [c]
+                      (let [sessionid (.query c.req "sessionid")]
+                        (createResponse c.req.raw (fn [session]
+                                                    (swap! sessions assoc sessionid session)
+                                                    (init-page sessionid))))))
   (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
                                            redirect_command (str "setTimeout(() => window.location = '" url "')")]
                                        (.stream d/ServerSentEventGenerator
@@ -41,12 +46,8 @@
                                                         game-id playertype
                                                         frontend/status-message
                                                         frontend/board-message) #js{:keepalive true}))))
-  (.get r "actions/changetext" (fn [c] (let [sessionid (.get c "sessionid")] (change-page sessionid) )))
-  (.get r "connect" (fn [c]
-                      (let [sessionid (.query c.req "sessionid")]
-                        (createResponse c.req.raw (fn [session]
-                                                    (swap! sessions assoc sessionid session)
-                                                    (init-page sessionid))))))
+  (.get r "actions/changetext" (fn [c] (let [sessionid (.get c "sessionid")] (change-page sessionid))))
+
   (.get r "actions/toggle" (fn [c]
                              (let [game-id (.get c "game-id")
                                    playertype (.get c "playertype")
@@ -70,11 +71,9 @@
 
 (defn signalware [c next]
   (p/let [signals (.readSignals d/ServerSentEventGenerator c.req)
-  has-signal (j/get signals :success)
-  ]
+          has-signal (j/get signals :success)]
     (when has-signal
-      (let [
-            sessionid (get-signal signals "sessionid")
+      (let [sessionid (get-signal signals "sessionid")
             game-id (get-signal signals "game_id")
             playertype (get-signal signals "playertype")]
         (.set c "sessionid" sessionid)

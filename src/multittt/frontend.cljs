@@ -108,3 +108,5 @@ _ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid 
          [:div {:id "replicanttest"}]])))
 
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
+
+(def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr (for [a (range 1 10)] [:td (str a)])]]])

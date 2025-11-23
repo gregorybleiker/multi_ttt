@@ -25,3 +25,11 @@ greg@gbl-medion:~/projects/multi_ttt$ cat ~/.clojure/rebel_readline.edn
 ./browser-repl.bb
 
 clojure -T:nrebel :port 1339
+
+### reload
+
+```
+ user=> (require '[multittt.frontend] :reload)
+```
+
+you need to be in an other namespace (maybe even in user) than the one your reloading for this to work 
