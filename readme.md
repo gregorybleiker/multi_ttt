@@ -33,3 +33,7 @@ clojure -T:nrebel :port 1339
 ```
 
 you need to be in an other namespace (maybe even in user) than the one your reloading for this to work 
+
+(multittt.stream/send-signal (last (last @multittt.server/sessions)) #js{:tablevalue 'def'})
+(require '[multittt.server] :reload) (require '[multittt.stream] :reload) (require 'multittt.frontend :reload)
+(multittt.stream/transfer (last (last @multittt.server/sessions)) "topelement" multittt.frontend/alpinesample)

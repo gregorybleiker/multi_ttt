@@ -1,6 +1,6 @@
 (ns multittt.frontend
   (:require
-   [reagent.dom.server :refer [render-to-string render-to-static-markup]]
+   [reagent.dom.server :refer [render-to-string]]
    [multittt.hiccuper :as h]))
 
 ; frontend related
@@ -21,33 +21,33 @@
 (def end-button (render-to-string [:button {:class "button" :data-on-click "@get('/actions/redirect?url='+encodeURI('/'))" :id "endedbutton"} "restart"]))
 (def action-button [:button {:class "button" :data-on:click "@get('/actions/changetext')" :id "actionbutton"} "Press me!"])
 
-(def renderelem [:script {:type "application/x-scittle"} " 
-      (require
-      '[replicant.string :as s]
-      '[clojure.edn :as edn]
-      '[replicant.dom :as r])
-      (defn render-element [elem hic]
-      (println elem)
-      (def el (js/document.getElementById elem))
-      (println hic)
-      (r/render el (edn/read-string hic))
-      \"\"
-       )      
-      (set! (.-renderelement js/window) render-element)
+(def loader '(do
+               (require
+                '[replicant.string :as s]
+                '[clojure.edn :as edn]
+                '[replicant.dom :as r])
+               (defn render-element [elem hic]
+                 (println "Element:" elem)
+                 (def el (js/document.getElementById elem))
+                 (println hic)
+                 (r/render el (edn/read-string hic))
+                 "")
+               (set! (.-renderelement js/window) render-element)))
 
-      "])
+(def renderelem [:script {:type "application/x-scittle"} (pr-str loader)])
 
-(def connect [:script {:type "application/x-scittle"} " 
-(let [sessionid (clojure.core/random-uuid)
-evtSrc (js/EventSource. (str \"connect?sessionid=\" sessionid ))
-sessionElement (js/document.createElement \"div\")
-_ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid \"'\" ))]
-(.appendChild js/document.body sessionElement)
-(.addEventListener evtSrc \"render-element\"
-(fn [evt]
-(let [data (js/JSON.parse evt.data)]
-(js/window.renderelement data.elem data.hic)))))
-      "])
+(def connector '(do
+                  (let [sessionid (clojure.core/random-uuid)
+                        evtSrc (js/EventSource. (str "connect?sessionid= " sessionid))
+                        sessionElement (js/document.createElement "div")
+                        _ (.setAttribute sessionElement "data-signals:sessionid" (str " '" sessionid " '"))]
+                    (.appendChild js/document.body sessionElement)
+                    (.addEventListener evtSrc "render-element"
+                                       (fn [evt]
+                                         (let [_ (println "ssllsl") data (js/JSON.parse evt.data)]
+                                           (js/window.renderelement data.elem data.hic)))))))
+
+(def connect [:script {:type "application/x-scittle"} (pr-str connector)])
 
 (def head-part
   [:head
@@ -66,11 +66,9 @@ _ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid 
  ; "]])
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]])
 
-(def starter-page [:body [:div {:id "topelement"}] action-button ])
-
 (def welcome-page
   [:body
-   [:div  {:data-signals "{game_id: '', test_hiccup: '[:p \"iiiiihiii\"]'}"}]
+   [:div  {:data-signals "{tablevalue: 'initial value', game_id: '', test_hiccup: '[:p \"iiiiihiii\"]'}"}]
    [:section {:class "section"}
     [:div {:class "container has-text-centered"}
      [:h1 {:class "title"} "Start a Game"]
@@ -83,8 +81,6 @@ _ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid 
      [:div {:display "none" :data-text "window.renderelem('replicanttest', $test_hiccup)"}]
      [:div {:id "replicanttest"}]
      [:button {:onclick "my_alert()"} "clickme"]]]])
-
-(def homepage (h/hiccup->document [:html head-part starter-page]))
 
 (defn game-page [streams game-id]
   (let [playertype (if-not (get-in streams [game-id :streams "X"]) "X"
@@ -109,4 +105,6 @@ _ (.setAttribute sessionElement \"data-signals:sessionid\" (str \"'\" sessionid 
 
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
 
-(def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr (for [a (range 1 10)] [:td (str a)])]]])
+(def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr] [:td {:data-text "$tablevalue"}]]])
+(def starter-page [:body [:div {:data-signals "{tablevalue: 'abc'}" :id "topelement"}] action-button samplecomponent])
+(def homepage (h/hiccup->document [:html head-part starter-page]))

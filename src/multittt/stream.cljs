@@ -8,9 +8,11 @@
     true
     (catch js/Error _e (let [_ (println _e)] false))))
 
-(defn send-signal [stream signals]
+(defn to-js [s] (js/JSON.stringify (clj->js s)))
+
+(defn send-signal [session signals]
   (try
-    (.patchSignals stream signals)
+    (.push session "signals {tablevalue: 'def'}" "datastar-patch-signals")
     true
     (catch js/Error _e (let [_ (println _e)] false))))
 
