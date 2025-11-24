@@ -50,4 +50,5 @@
   (ensure-init-board! game-id)
   (clean-stream! game-id status-message playertype)
   (add-stream! game-id playertype stream)
-  (stream/broadcast @all-streams status-message board-message game-id))
+  ;(stream/broadcast @all-streams status-message board-message game-id)
+  )

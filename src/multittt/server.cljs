@@ -21,7 +21,7 @@
 
 (defn init-page [sessionid]
   (let [session (@sessions sessionid)]
-    (.push session #js{:elem "topelement" :hic "[:p \"hello\"]"} "render-element")))
+    (stream/transfer session "topelement" [:p "hello"])))
 
 (defn change-page [sessionid]
   (let [session (@sessions sessionid)]
@@ -30,10 +30,11 @@
 (defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
   (.get r "connect" (fn [c]
-                      (let [sessionid (.query c.req "sessionid")]
-                        (createResponse c.req.raw (fn [session]
-                                                    (swap! sessions assoc sessionid session)
-                                                    (init-page sessionid))))))
+                      (let [sessionid (.query c.req "sessionid")
+                            sessionoptions #js{:serializer (fn [c] (let [_ (println c)]) c)}]
+                        (createResponse c.req.raw sessionoptions (fn [session]
+                                                                   (swap! sessions assoc sessionid session)
+                                                                   (init-page sessionid))))))
   (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
                                            redirect_command (str "setTimeout(() => window.location = '" url "')")]
                                        (.stream d/ServerSentEventGenerator
@@ -61,7 +62,8 @@
                                      (state/end-game! game-id frontend/status-message frontend/game-end-message frontend/end-button winner)
                                      (do
                                        (state/toggle-player! game-id)
-                                       (stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)))))
+                                       ;(stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)
+                                       ))))
                                (new js/Response))))
   (.get r "/game" (fn [c] (let [game-id (.query c.req "game_id")] (.html c (frontend/gamepage @state/all-streams game-id)))))
   (.get r "*" (fn [c] (.text c "nope"))))

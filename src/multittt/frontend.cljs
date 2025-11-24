@@ -44,7 +44,7 @@
                     (.appendChild js/document.body sessionElement)
                     (.addEventListener evtSrc "render-element"
                                        (fn [evt]
-                                         (let [_ (println "ssllsl") data (js/JSON.parse evt.data)]
+                                         (let [data (js/JSON.parse evt.data)]
                                            (js/window.renderelement data.elem data.hic)))))))
 
 (def connect [:script {:type "application/x-scittle"} (pr-str connector)])
@@ -106,5 +106,5 @@
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
 
 (def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr] [:td {:data-text "$tablevalue"}]]])
-(def starter-page [:body [:div {:data-signals "{tablevalue: 'abc'}" :id "topelement"}] action-button samplecomponent])
+(def starter-page [:body [:div {:data-signals "{tablevalue: 'abc'}" :hidden true }] [:div {:id "topelement"}] action-button samplecomponent])
 (def homepage (h/hiccup->document [:html head-part starter-page]))

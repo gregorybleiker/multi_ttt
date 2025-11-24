@@ -12,10 +12,11 @@
 
 (defn send-signal [session signals]
   (try
-    (.push session "signals {tablevalue: 'def'}" "datastar-patch-signals")
+    (.push session "signals {\"somevalue\": 1}
+    " "datastar-fetch")
     true
     (catch js/Error _e (let [_ (println _e)] false))))
 
 (defn transfer [session element content ]
-    (.push session #js{:elem element :hic (with-out-str (pprint content))} "render-element"))
+    (.push session (js/JSON.stringify #js {:elem element :hic (with-out-str (pprint content))}) "render-element"))
 
