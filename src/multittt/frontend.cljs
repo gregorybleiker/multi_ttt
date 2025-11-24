@@ -106,5 +106,5 @@
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
 
 (def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr] [:td {:data-text "$tablevalue"}]]])
-(def starter-page [:body [:div {:data-signals "{tablevalue: 'abc'}" :hidden true }] [:div {:id "topelement"}] action-button samplecomponent])
+(def starter-page [:body [:div {:data-init "@get('/connect?sessionid=aaaaa')"}] [:div {:data-signals "{tablevalue: 'abc'}" :hidden true }] [:div {:id "topelement"}] action-button samplecomponent])
 (def homepage (h/hiccup->document [:html head-part starter-page]))

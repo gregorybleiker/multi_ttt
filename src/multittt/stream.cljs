@@ -12,8 +12,8 @@
 
 (defn send-signal [session signals]
   (try
-    (.push session "signals {\"somevalue\": 1}
-    " "datastar-fetch")
+;    (.push session (str "signals " (js/JSON.stringify #js{:tablevalue "something other"})) "datastar-patch-signals")
+    (.push session (str "signals " (js/JSON.stringify signals)) "datastar-patch-signals")
     true
     (catch js/Error _e (let [_ (println _e)] false))))
 
