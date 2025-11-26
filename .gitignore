@@ -4,3 +4,4 @@
 .nrepl-port
 .calva
 .rebel_readline_history
+.direnv/flake-profile*

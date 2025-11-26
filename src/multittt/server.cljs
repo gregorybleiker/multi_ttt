@@ -22,7 +22,8 @@
 (defn init-page [sessionid]
   (let [session (@sessions sessionid)]
     (stream/transfer session "topelement" [:p "hello"])
-    (stream/send-signal session #js{:tablevalue "from init"})))
+    (stream/send-signal session #js{:tablevalue "from init"})
+    ))
 
 (defn change-page [sessionid]
   (let [session (@sessions sessionid)]

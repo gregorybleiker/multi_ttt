@@ -18,5 +18,5 @@
     (catch js/Error _e (let [_ (println _e)] false))))
 
 (defn transfer [session element content ]
-    (.push session (js/JSON.stringify #js {:elem element :hic (with-out-str (pprint content))}) "render-element"))
+    (.push session (str "renderdata " (js/JSON.stringify #js {:elem element :hic (with-out-str (pprint content))})) "datastar-render-element"))
 

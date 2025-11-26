@@ -38,11 +38,11 @@
 
 (def connector '(do
                   (let [sessionid (clojure.core/random-uuid)
-                        evtSrc (js/EventSource. (str "connect?sessionid= " sessionid))
+                        ;evtSrc (js/EventSource. (str "connect?sessionid= " sessionid))
                         sessionElement (js/document.createElement "div")
-                        _ (.setAttribute sessionElement "data-signals:sessionid" (str " '" sessionid " '"))]
+                        _ (.setAttribute sessionElement "data-init" (str "@get('/connect?sessionid=" sessionid "')"))]
                     (.appendChild js/document.body sessionElement)
-                    (.addEventListener evtSrc "render-element"
+                    (.addEventListener js/document "render-element"
                                        (fn [evt]
                                          (let [data (js/JSON.parse evt.data)]
                                            (js/window.renderelement data.elem data.hic)))))))
@@ -64,7 +64,15 @@
   ; await scittle.core.eval_script_tags();
   ; await import(\"https://cdn.jsdelivr.net/gh/starfederation/datastar@main/bundles/datastar.js\");
  ; "]])
-   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]])
+   [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]
+   [:script {:type "module"} "
+  import { watcher } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js';
+watcher({
+  name: 'datastar-render-element',
+   apply({error}, {renderdata}) {
+  const {elem, hic} = JSON.parse(renderdata);
+  window.renderelement(elem, hic)  }})
+  "]])
 
 (def welcome-page
   [:body
@@ -106,5 +114,5 @@
 (defn gamepage [streams game-id] (render-to-string [:html head-part (game-page streams game-id)]))
 
 (def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr] [:td {:data-text "$tablevalue"}]]])
-(def starter-page [:body [:div {:data-init "@get('/connect?sessionid=aaaaa')"}] [:div {:data-signals "{tablevalue: 'abc'}" :hidden true }] [:div {:id "topelement"}] action-button samplecomponent])
+(def starter-page [:body [:div {:data-signals "{tablevalue: 'abc'}" :hidden true}] [:div {:id "topelement"}] action-button samplecomponent])
 (def homepage (h/hiccup->document [:html head-part starter-page]))
