@@ -18,6 +18,7 @@
             deno
             babashka
             helix
+            clojure
           ];
 
           shellHook = ''

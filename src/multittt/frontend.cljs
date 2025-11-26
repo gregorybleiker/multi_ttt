@@ -41,11 +41,7 @@
                         ;evtSrc (js/EventSource. (str "connect?sessionid= " sessionid))
                         sessionElement (js/document.createElement "div")
                         _ (.setAttribute sessionElement "data-init" (str "@get('/connect?sessionid=" sessionid "')"))]
-                    (.appendChild js/document.body sessionElement)
-                    (.addEventListener js/document "render-element"
-                                       (fn [evt]
-                                         (let [data (js/JSON.parse evt.data)]
-                                           (js/window.renderelement data.elem data.hic)))))))
+                    (.appendChild js/document.body sessionElement))))
 
 (def connect [:script {:type "application/x-scittle"} (pr-str connector)])
 
@@ -66,13 +62,19 @@
  ; "]])
    [:script {:type "module" :src "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js"}]
    [:script {:type "module"} "
+      import {watcher} from \"https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js\"
+      globalThis.datastarWatcher = watcher;
+      console.log('here')
+  "]
+   [:script {:type "module"} "
   import { watcher } from 'https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.6/bundles/datastar.js';
 watcher({
   name: 'datastar-render-element',
    apply({error}, {renderdata}) {
   const {elem, hic} = JSON.parse(renderdata);
   window.renderelement(elem, hic)  }})
-  "]])
+  "]
+   ])
 
 (def welcome-page
   [:body

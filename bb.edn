@@ -1,6 +1,6 @@
 {:deps {io.github.babashka/sci.nrepl {:mvn/version "0.0.2"}}
- :tasks
+:tasks
  {server-repl (shell "clojure -T:nrebel :port 1337")
   ui-repl (shell "clojure -T:nrebel :port 1234")
   watch (let [files (shell {:out :string} "ls src/multittt/*")]
-  (shell {:in files} "entr -r deno run server"))}}
+          (shell {:in files} "entr -r deno run server"))}}
