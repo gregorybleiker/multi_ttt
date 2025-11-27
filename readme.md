@@ -1,3 +1,7 @@
+# mazeru
+
+https://en.wiktionary.org/wiki/%E6%B7%B7%E3%81%9C%E3%82%8B
+
   deno -A jsr:@babashka/nbb -m --classpath src multittt.state
 
 
