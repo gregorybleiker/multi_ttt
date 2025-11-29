@@ -7,9 +7,7 @@
             ["jsr:@mwid/better-sse" :refer [createResponse]]
             [promesa.core :as p]
             [applied-science.js-interop :as j]
-            [multittt.state :as state]
             [multittt.stream :as stream]
-            [multittt.game :as game]
             [multittt.frontend :as frontend]))
 
 (defn get-signal [signals name]
@@ -20,14 +18,14 @@
 (defonce sessions (atom {}))
 
 (defn init-page [sessionid]
-  (let [session (@sessions sessionid)]
-    (stream/transfer session "topelement" [:p "hello"])
-    (stream/send-signal session #js{:tablevalue "from init"})
-    ))
-
-(defn change-page [sessionid]
-  (let [session (@sessions sessionid)]
-    (stream/transfer session "topelement" [:p "goodbye"])))
+  (let [session (get-in @sessions [sessionid :session])
+        _ (prn (str "session: " session " sessionid: " sessionid ))
+        initialized (get-in @sessions [sessionid :initialized])]
+    (when (not initialized)
+      (swap! sessions assoc-in [sessionid :initialized] true)
+      (stream/transfer session "topelement" [:p "hello"])
+      (stream/send-signal session #js{:tablevalue "from init"})
+      )))
 
 (defn route! [r]
   (.get r "/" (fn [c] (.html c frontend/homepage)))
@@ -35,39 +33,8 @@
                       (let [sessionid (.query c.req "sessionid")
                             sessionoptions #js{:serializer (fn [c] (let [_ (println c)]) c)}]
                         (createResponse c.req.raw sessionoptions (fn [session]
-                                                                   (swap! sessions assoc sessionid session)
+                                                                   (swap! sessions assoc-in [sessionid :session] session)
                                                                    (init-page sessionid))))))
-  (.get r "actions/redirect" (fn [c] (let [url (.query c.req "url")
-                                           redirect_command (str "setTimeout(() => window.location = '" url "')")]
-                                       (.stream d/ServerSentEventGenerator
-                                                (fn [stream] (.executeScript stream redirect_command)
-                                                  #js{:keepalive true})))))
-  (.get r "actions/connect" (fn [c] (let [game-id (.get c "game-id")
-                                          playertype (.get c "playertype")]
-                                      (.stream d/ServerSentEventGenerator
-                                               (partial state/stream-handler
-                                                        game-id playertype
-                                                        frontend/status-message
-                                                        frontend/board-message) #js{:keepalive true}))))
-  (.get r "actions/changetext" (fn [c] (let [sessionid (.get c "sessionid")] (change-page sessionid))))
-
-  (.get r "actions/toggle" (fn [c]
-                             (let [game-id (.get c "game-id")
-                                   playertype (.get c "playertype")
-                                   current-player (get-in @state/all-streams [game-id :player])
-                                   url_cell_id (parse-long (or (.query c.req "cell_id") ""))]
-                               (when (= playertype current-player)
-                                 (let [_ (println "updating")] (state/update-board! game-id url_cell_id playertype))
-                                 (let [board (get-in @state/all-streams [game-id :board])
-                                       winner (game/check-win board)]
-                                   (if winner
-                                     (state/end-game! game-id frontend/status-message frontend/game-end-message frontend/end-button winner)
-                                     (do
-                                       (state/toggle-player! game-id)
-                                       ;(stream/broadcast @state/all-streams frontend/status-message frontend/board-message game-id)
-                                       ))))
-                               (new js/Response))))
-  (.get r "/game" (fn [c] (let [game-id (.query c.req "game_id")] (.html c (frontend/gamepage @state/all-streams game-id)))))
   (.get r "*" (fn [c] (.text c "nope"))))
 
 (defonce webserver (atom {}))
