@@ -48,13 +48,26 @@ watcher({
    apply({error}, {renderdata}) {
   const {elem, hic} = JSON.parse(renderdata);
   window.renderelement(elem, hic)  }})
+  "]
+   [:style "
+  .cell {
+    border: 1px solid hsl(0, 0%, 86%);
+  }
   "]])
 
 (def samplecomponent [:div {:class "tablecontainer"} [:table {:class "table"} [:tr] [:td {:data-text "$tablevalue"}]]])
 
+(def demo-grid [:section {:class "section is-flex is-justify-content-center is-align-items-center" :style "min-height: 100vh;"}
+                [:div {:class "fixed-grid has-3-cols" :style "width: 90%"}
+                 [:div {:class "grid"}
+                  (for [x (range 9)]
+                    [:div {:class "cell"}
+                      [:div {:class "is-flex is-justify-content-center is-align-items-center"}
+                        [:div {:id (str "elem" x)} (str ".." x "..")]]])]]])
+
 (def starter-page [:body
                    [:div {:data-signals "{initialized: 'false', tablevalue: 'abcd'}"
-                  
+
                           :hidden true}]
                    [:div {:id "topelement"}]
                    samplecomponent])

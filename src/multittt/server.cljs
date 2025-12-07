@@ -23,7 +23,7 @@
         initialized (get-in @sessions [sessionid :initialized])]
     (when (not initialized)
       (swap! sessions assoc-in [sessionid :initialized] true)
-      (stream/transfer session "topelement" [:p "hello"])
+      (stream/transfer session "topelement" frontend/demo-grid)
       (stream/send-signal session #js{:tablevalue "from init"})
       )))
 

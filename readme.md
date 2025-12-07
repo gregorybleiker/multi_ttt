@@ -40,6 +40,7 @@ you need to be in an other namespace (maybe even in user) than the one your relo
 
 (multittt.stream/send-signal (last (last @multittt.server/sessions)) #js{:tablevalue 'def'})
 (require '[multittt.server] :reload) (require '[multittt.stream] :reload) (require 'multittt.frontend :reload)
+(require '[multittt.server :as server] :reload) (require '[multittt.stream :as stream] :reload) (require '[multittt.frontend :as frontend] :reload)
 (multittt.stream/transfer (last (last @multittt.server/sessions)) "topelement" multittt.frontend/alpinesample)
 user=> (multittt.stream/send-signal (last (last @multittt.server/sessions)) #js{:tablevalue "something even newer"})
 signals {"tablevalue":"something even newer"}
