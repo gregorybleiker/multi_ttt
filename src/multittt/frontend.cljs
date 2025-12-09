@@ -29,6 +29,7 @@
 
 (def head-part
   [:head
+   [:script {:type "module" :src "https://unpkg.com/@fluentui/web-components"}]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.min.js"}]
    [:script {:type "application/javascript" :src "https://cdn.jsdelivr.net/npm/scittle@0.7.28/dist/scittle.replicant.js"}]
    [:script "var SCITTLE_NREPL_WEBSOCKET_PORT = 1340"]
@@ -62,8 +63,8 @@ watcher({
                  [:div {:class "grid"}
                   (for [x (range 9)]
                     [:div {:class "cell"}
-                      [:div {:class "is-flex is-justify-content-center is-align-items-center"}
-                        [:div {:id (str "elem" x)} (str ".." x "..")]]])]]])
+                     [:div {:class "is-flex is-justify-content-center is-align-items-center"}
+                      [:div {:id (str "elem" x)} (str ".." x "..")]]])]]])
 
 (def starter-page [:body
                    [:div {:data-signals "{initialized: 'false', tablevalue: 'abcd'}"

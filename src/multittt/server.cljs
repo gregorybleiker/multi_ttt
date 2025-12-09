@@ -17,6 +17,8 @@
 
 (defonce sessions (atom {}))
 
+(defn last-session [] ((last (last @sessions)) :session) )
+
 (defn init-page [sessionid]
   (let [session (get-in @sessions [sessionid :session])
         _ (prn (str "session: " session " sessionid: " sessionid ))
